@@ -39,19 +39,8 @@
  ****************************************************************************/
 
 #include <QtGui>
-#include <QTextEdit>
-#include <QtPrintSupport/QPrinter>
-#include <QtPrintSupport/QPrintDialog>
-#include <QStatusBar>
-#include <QFileDialog>
-#include <QApplication>
-#include <QAction>
-#include <QMessageBox>
-#include <QMenu>
-#include <QMenuBar>
-#include <QToolBar>
-#include <QDockWidget>
-#include <QListWidget>
+#include <QtPrintSupport>
+#include <QtWidgets>
 
 #include "mainwindow.h"
 
