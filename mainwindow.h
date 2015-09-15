@@ -42,6 +42,9 @@
  #define MAINWINDOW_H
 
  #include <QMainWindow>
+ #include <QDragEnterEvent>
+ #include <QMediaPlayer>
+ #include <QVideoWidget>
 
  class QAction;
  class QListWidget;
@@ -64,16 +67,24 @@
      void insertCustomer(const QString &customer);
      void addParagraph(const QString &paragraph);
 
+     void onSelectPlaylist(const QString &playlistItem);
+     void onDoubleClick(const QModelIndex &modelIndex);
+
  private:
      void createActions();
      void createMenus();
      void createToolBars();
      void createStatusBar();
      void createDockWindows();
+     void createMediaPlayer();
 
      QTextEdit *textEdit;
      QListWidget *customerList;
      QListWidget *paragraphsList;
+
+     QListWidget *playList;
+     QMediaPlayer * player;
+     QVideoWidget * videoWidget;
 
      QMenu *fileMenu;
      QMenu *editMenu;
@@ -88,6 +99,10 @@
      QAction *aboutAct;
      QAction *aboutQtAct;
      QAction *quitAct;
+ protected:
+     void dragEnterEvent(QDragEnterEvent *event);
+     void dropEvent(QDropEvent *event);
+
  };
 
  #endif

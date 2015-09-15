@@ -1,4 +1,6 @@
-QT      += core widgets printsupport
+QT      += core widgets printsupport multimedia multimediawidgets
+
+CONFIG += console
 
  HEADERS         = mainwindow.h
  SOURCES         = main.cpp \

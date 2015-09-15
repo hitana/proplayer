@@ -55,10 +55,31 @@
      createStatusBar();
      createDockWindows();
 
+     createMediaPlayer();
+
      setWindowTitle(tr("Dock Widgets"));
 
      newLetter();
      setUnifiedTitleAndToolBarOnMac(true);
+
+     setAcceptDrops(true);
+ }
+
+ void MainWindow::dragEnterEvent(QDragEnterEvent * e)
+ {
+     if (e->mimeData()->hasUrls()) {
+         e->acceptProposedAction();
+     }
+ }
+
+ void MainWindow::dropEvent(QDropEvent * e)
+ {
+     foreach (const QUrl & url, e->mimeData()->urls()) {
+         const QString & fileName = url.toLocalFile();
+
+         playList->addItem(fileName);
+
+     }
  }
 
  void MainWindow::newLetter()
@@ -194,6 +215,41 @@
 
  }
 
+ void MainWindow::onSelectPlaylist(const QString &playlistItem)
+ {
+     qDebug() << "Selected " << playlistItem;
+     return;
+ }
+
+ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
+ {
+     qDebug() << "Playing " << playList->currentRow() << ", " << playList->currentItem()->text();
+
+     player->setMedia(QUrl::fromLocalFile(playList->currentItem()->text()));
+     player->setVolume(50);
+     //videoWidget->show();
+     //videoWidget->resize(600, 480);
+
+     player->play();
+
+     // create player
+     // todo : make player inside main view ?
+    /* playlist = new QMediaPlaylist;
+     playlist->addMedia(QUrl("http://example.com/movie1.mp4"));
+     playlist->addMedia(QUrl("http://example.com/movie2.mp4"));
+     playlist->addMedia(QUrl("http://example.com/movie3.mp4"));
+     playlist->setCurrentIndex(1);
+
+     player = new QMediaPlayer;
+     player->setPlaylist(playlist);
+
+     videoWidget = new QVideoWidget;
+     player->setVideoOutput(videoWidget);
+     videoWidget->show();
+
+     player->play();*/
+ }
+
  void MainWindow::about()
  {
     QMessageBox::about(this, tr("About Dock Widgets"),
@@ -314,6 +370,19 @@
              << "You made an overpayment (more than $5). Do you wish to "
                 "buy more items, or should we return the excess to you?");
      dock->setWidget(paragraphsList);
+     addDockWidget(Qt::LeftDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
+
+     dock = new QDockWidget (tr("Playlist"), this);
+     playList = new QListWidget(dock);
+
+     dock->setWidget(playList);
+     addDockWidget(Qt::RightDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
+
+     dock = new QDockWidget (tr("Video"), this);
+     videoWidget = new QVideoWidget(dock);
+     dock->setWidget(videoWidget);
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
@@ -321,4 +390,17 @@
              this, SLOT(insertCustomer(QString)));
      connect(paragraphsList, SIGNAL(currentTextChanged(QString)),
              this, SLOT(addParagraph(QString)));
+
+     connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));
+     connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
+ }
+
+ void MainWindow::createMediaPlayer()
+ {
+     player = new QMediaPlayer;
+
+     //videoWidget = new QVideoWidget;
+     player->setVideoOutput(videoWidget);
+
+     connect(player, SIGNAL(positionChanged(qint64)), this, SLOT(positionChanged(qint64)));
  }
