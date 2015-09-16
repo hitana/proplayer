@@ -54,8 +54,7 @@
      createToolBars();
      createStatusBar();
      createDockWindows();
-
-     createMediaPlayer();
+     createVlc();
 
      setWindowTitle(tr("Dock Widgets"));
 
@@ -225,29 +224,28 @@
  {
      qDebug() << "Playing " << playList->currentRow() << ", " << playList->currentItem()->text();
 
-     player->setMedia(QUrl::fromLocalFile(playList->currentItem()->text()));
-     player->setVolume(50);
-     //videoWidget->show();
-     //videoWidget->resize(600, 480);
+     /* Create a new Media */
+     libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcInstance, playList->currentItem()->text().toStdString().c_str());
+     if (!vlcMedia)
+         return;
 
-     player->play();
+     /* Create a new libvlc player */
+     vlcPlayer = libvlc_media_player_new_from_media (vlcMedia);
 
-     // create player
-     // todo : make player inside main view ?
-    /* playlist = new QMediaPlaylist;
-     playlist->addMedia(QUrl("http://example.com/movie1.mp4"));
-     playlist->addMedia(QUrl("http://example.com/movie2.mp4"));
-     playlist->addMedia(QUrl("http://example.com/movie3.mp4"));
-     playlist->setCurrentIndex(1);
+     /* Release the media */
+     libvlc_media_release(vlcMedia);
 
-     player = new QMediaPlayer;
-     player->setPlaylist(playlist);
+     /* Integrate the video in the interface */
+ #if defined(Q_OS_MAC)
+     libvlc_media_player_set_nsobject(vlcPlayer, (void *)label->winId());
+ #elif defined(Q_OS_UNIX)
+     libvlc_media_player_set_xwindow(vlcPlayer, label->winId());
+ #elif defined(Q_OS_WIN)
+     libvlc_media_player_set_hwnd(vlcPlayer, label->winId());
+ #endif
 
-     videoWidget = new QVideoWidget;
-     player->setVideoOutput(videoWidget);
-     videoWidget->show();
-
-     player->play();*/
+     /* And start playback */
+     libvlc_media_player_play (vlcPlayer);
  }
 
  void MainWindow::about()
@@ -381,8 +379,9 @@
      viewMenu->addAction(dock->toggleViewAction());
 
      dock = new QDockWidget (tr("Video"), this);
-     videoWidget = new QVideoWidget(dock);
-     dock->setWidget(videoWidget);
+     label = new QLabel();
+     dock->setWidget(label);
+
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
@@ -395,12 +394,22 @@
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
  }
 
- void MainWindow::createMediaPlayer()
+ void MainWindow::createVlc()
  {
-     player = new QMediaPlayer;
+     QMessageBox::critical(this, "VLC_PLUGIN_PATH", getenv("VLC_PLUGIN_PATH"));
+     /* Initialize libVLC */
+     vlcInstance = libvlc_new(0, NULL);
 
-     //videoWidget = new QVideoWidget;
-     player->setVideoOutput(videoWidget);
+     /* Complain in case of broken installation */
+     if (vlcInstance == NULL) {
+         QMessageBox::critical(this, "Qt libVLC player", "Could not init libVLC");
+         exit(1);
+     }
+ }
 
-     connect(player, SIGNAL(positionChanged(qint64)), this, SLOT(positionChanged(qint64)));
+ MainWindow::~MainWindow() {
+     /* Release libVLC instance on quit */
+     if (vlcInstance) {
+         libvlc_release(vlcInstance);
+     }
  }

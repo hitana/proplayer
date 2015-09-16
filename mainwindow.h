@@ -45,6 +45,9 @@
  #include <QDragEnterEvent>
  #include <QMediaPlayer>
  #include <QVideoWidget>
+ #include <QLabel>
+
+ #include <vlc/vlc.h>
 
  class QAction;
  class QListWidget;
@@ -57,6 +60,7 @@
 
  public:
      MainWindow();
+     ~MainWindow();
 
  private slots:
      void newLetter();
@@ -76,15 +80,14 @@
      void createToolBars();
      void createStatusBar();
      void createDockWindows();
-     void createMediaPlayer();
+     void createVlc();
 
      QTextEdit *textEdit;
      QListWidget *customerList;
      QListWidget *paragraphsList;
 
      QListWidget *playList;
-     QMediaPlayer * player;
-     QVideoWidget * videoWidget;
+     QLabel * label;
 
      QMenu *fileMenu;
      QMenu *editMenu;
@@ -99,6 +102,10 @@
      QAction *aboutAct;
      QAction *aboutQtAct;
      QAction *quitAct;
+
+     libvlc_instance_t *vlcInstance;
+     libvlc_media_player_t *vlcPlayer;
+
  protected:
      void dragEnterEvent(QDragEnterEvent *event);
      void dropEvent(QDropEvent *event);

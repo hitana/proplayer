@@ -7,6 +7,11 @@ CONFIG += console
                    mainwindow.cpp
  RESOURCES       = dockwidgets.qrc
 
+ unix {
+  LIBS += -L/usr/local/lib -lvlc
+  INCLUDEPATH +=/usr/local/include/vlc/
+ }
+
  # install
  target.path = $$[QT_INSTALL_EXAMPLES]/mainwindows/dockwidgets
  sources.files = $$SOURCES $$HEADERS $$RESOURCES dockwidgets.pro images
