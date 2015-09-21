@@ -12,6 +12,13 @@ CONFIG += console
   INCLUDEPATH +=/usr/local/include/vlc/
  }
 
+macx
+{
+  LIBS += -L$$PWD/vlc-sdk/lib/ -lvlc
+  INCLUDEPATH += $$PWD/vlc-sdk/include
+  DEPENDPATH += $$PWD/vlc-sdk/include
+}
+
  # install
  target.path = $$[QT_INSTALL_EXAMPLES]/mainwindows/dockwidgets
  sources.files = $$SOURCES $$HEADERS $$RESOURCES dockwidgets.pro images
