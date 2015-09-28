@@ -46,8 +46,10 @@
  #include <QMediaPlayer>
  #include <QVideoWidget>
  #include <QLabel>
+ #include <QtMultimedia>
 
- #include <vlc/vlc.h>
+ //#include <vlc/vlc.h>
+#include "glwidget.h"
 
  class QAction;
  class QListWidget;
@@ -88,6 +90,7 @@
 
      QListWidget *playList;
      QLabel * label;
+     GLWidget * glWidget;
 
      QMenu *fileMenu;
      QMenu *editMenu;
@@ -103,8 +106,8 @@
      QAction *aboutQtAct;
      QAction *quitAct;
 
-     libvlc_instance_t *vlcInstance;
-     libvlc_media_player_t *vlcPlayer;
+     //libvlc_instance_t *vlcInstance;
+     //libvlc_media_player_t *vlcPlayer;
 
  protected:
      void dragEnterEvent(QDragEnterEvent *event);

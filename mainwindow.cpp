@@ -225,27 +225,28 @@
      qDebug() << "Playing " << playList->currentRow() << ", " << playList->currentItem()->text();
 
      /* Create a new Media */
-     libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcInstance, playList->currentItem()->text().toStdString().c_str());
-     if (!vlcMedia)
-         return;
+     //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcInstance, playList->currentItem()->text().toStdString().c_str());
+     //if (!vlcMedia)
+     //    return;
 
      /* Create a new libvlc player */
-     vlcPlayer = libvlc_media_player_new_from_media (vlcMedia);
+     //vlcPlayer = libvlc_media_player_new_from_media (vlcMedia);
 
      /* Release the media */
-     libvlc_media_release(vlcMedia);
+     //libvlc_media_release(vlcMedia);
 
      /* Integrate the video in the interface */
- #if defined(Q_OS_MAC)
+/*
+#if defined(Q_OS_MAC)
      libvlc_media_player_set_nsobject(vlcPlayer, (void *)label->winId());
  #elif defined(Q_OS_UNIX)
      libvlc_media_player_set_xwindow(vlcPlayer, label->winId());
  #elif defined(Q_OS_WIN)
      libvlc_media_player_set_hwnd(vlcPlayer, label->winId());
  #endif
-
+*/
      /* And start playback */
-     libvlc_media_player_play (vlcPlayer);
+     //libvlc_media_player_play (vlcPlayer);
  }
 
  void MainWindow::about()
@@ -381,9 +382,23 @@
      dock = new QDockWidget (tr("Video"), this);
      label = new QLabel();
      dock->setWidget(label);
-
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
+
+     //--------------------------------------------------
+     QGLFormat glFormat;
+     glFormat.setVersion (2, 1);
+     glFormat.setProfile (QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
+     glFormat.setSampleBuffers (true);
+
+     glWidget = new GLWidget(glFormat, this);
+
+     glWidget->initVideo(); //  ??
+    dock = new QDockWidget (tr ("GlWidget"), this);
+     dock->setWidget(glWidget);
+     addDockWidget(Qt::RightDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
+     //--------------------------------------------------
 
      connect(customerList, SIGNAL(currentTextChanged(QString)),
              this, SLOT(insertCustomer(QString)));
@@ -398,18 +413,18 @@
  {
      QMessageBox::critical(this, "VLC_PLUGIN_PATH", getenv("VLC_PLUGIN_PATH"));
      /* Initialize libVLC */
-     vlcInstance = libvlc_new(0, NULL);
+     //vlcInstance = libvlc_new(0, NULL);
 
      /* Complain in case of broken installation */
-     if (vlcInstance == NULL) {
-         QMessageBox::critical(this, "Qt libVLC player", "Could not init libVLC");
-         exit(1);
-     }
+     //if (vlcInstance == NULL) {
+     //    QMessageBox::critical(this, "Qt libVLC player", "Could not init libVLC");
+     //    exit(1);
+     //}
  }
 
  MainWindow::~MainWindow() {
      /* Release libVLC instance on quit */
-     if (vlcInstance) {
-         libvlc_release(vlcInstance);
-     }
+     //if (vlcInstance) {
+     //    libvlc_release(vlcInstance);
+     //}
  }

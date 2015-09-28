@@ -1,20 +1,41 @@
-QT      += core widgets printsupport multimedia multimediawidgets
+QT      += core widgets printsupport multimedia multimediawidgets gui opengl
 
 CONFIG += console
 
- HEADERS         = mainwindow.h
+ HEADERS         = mainwindow.h \
+    pipeline.h \
+    asyncwaitingqueue.h \
+    gstpipeline.h \
+    glwidget.h \
+    yuvdebugwindow.h
  SOURCES         = main.cpp \
-                   mainwindow.cpp
+                   mainwindow.cpp \
+    pipeline.cpp \
+    gstpipeline.cpp \
+    glwidget.cpp \
+    yuvdebugwindow.cpp
  RESOURCES       = dockwidgets.qrc
 
  unix {
-  LIBS += -L/usr/local/lib -lvlc
-  INCLUDEPATH +=/usr/local/include/vlc/
+  # add vlc
+  #LIBS += -L/usr/local/lib -lvlc
+  #INCLUDEPATH +=/usr/local/include/vlc/
+
+  # add glib-2.0
+  INCLUDEPATH += -I/usr/local/include/glib-2.0 -I/usr/local/lib/glib-2.0/include
+  INCLUDEPATH += -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include
+
+  # add gstreamer-1.0
+  INCLUDEPATH +=/usr/local/include/gstreamer-1.0
+  INCLUDEPATH +=/usr/include/gstreamer-1.0
+  INCLUDEPATH +=/usr/local/lib/gstreamer-1.0/include/
+  LIBS += -L/usr/local/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0
+
  }
 
 macx
 {
-  LIBS += -L$$PWD/vlc-sdk/lib/ -lvlc
+  #LIBS += -L$$PWD/vlc-sdk/lib/ -lvlc
   INCLUDEPATH += $$PWD/vlc-sdk/include
   DEPENDPATH += $$PWD/vlc-sdk/include
 }
