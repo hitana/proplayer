@@ -40,6 +40,18 @@ macx
   DEPENDPATH += $$PWD/vlc-sdk/include
 }
 
+win32 {
+  INCLUDEPATH += C:\Gstreamer\1.0\x86_64\include\gstreamer-1.0\gst
+  INCLUDEPATH += C:\Gstreamer\1.0\x86_64\include\gstreamer-1.0
+  LIBS += -LC:\Gstreamer\1.0\x86_64\lib -lgstreamer-1.0
+
+  INCLUDEPATH += C:\Gstreamer\1.0\x86_64\include\glib-2.0
+  INCLUDEPATH += C:\Gstreamer\1.0\x86_64\lib\glib-2.0\include
+  INCLUDEPATH += C:\Gstreamer\1.0\x86_64\lib\gstreamer-1.0\include
+  LIBS +=  -lglib-2.0
+  LIBS += -LC:\Gstreamer\1.0\x86_64\lib -lgobject-2.0
+}
+
  # install
  target.path = $$[QT_INSTALL_EXAMPLES]/mainwindows/dockwidgets
  sources.files = $$SOURCES $$HEADERS $$RESOURCES dockwidgets.pro images
