@@ -38,6 +38,18 @@ macx
   #LIBS += -L$$PWD/vlc-sdk/lib/ -lvlc
   INCLUDEPATH += $$PWD/vlc-sdk/include
   DEPENDPATH += $$PWD/vlc-sdk/include
+
+  # add gstreamer
+  #INCLUDEPATH += `pkg-config --cflags gstreamer-1.0`
+  #LIBS += `pkg-config --libs gstreamer-1.0`
+  DEPENDPATH += -D_REENTRANT -I/usr/local/Cellar/gstreamer/1.4.5/include/gstreamer-1.0
+  DEPENDPATH += -I/usr/local/Cellar/glib/2.44.1/include/glib-2.0
+  DEPENDPATH += -I/usr/local/Cellar/glib/2.44.1/lib/glib-2.0/include
+  DEPENDPATH += -I/usr/local/opt/gettext/include
+  LIBS += -L/usr/local/Cellar/gstreamer/1.4.5/lib
+  LIBS += -L/usr/local/Cellar/glib/2.44.1/lib
+  LIBS += -L/usr/local/opt/gettext/lib
+  LIBS += -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lintl
 }
 
 win32 {
