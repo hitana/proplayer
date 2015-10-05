@@ -106,8 +106,13 @@ void GStreamerPipeline::Configure()
 */
     // works good, but plays in separate window
     //this->m_pipeline = gst_parse_launch ("playbin uri=file:///home/vq/atomic.ts", NULL);
+#ifdef Q_OS_UNIX
     this->m_pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
-
+#endif
+#ifdef Q_OS_MAC
+this->m_pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink", NULL);
+#endif
+    // todo : windows ?
 
     // it works fine
     // no it hangs all system unlit reboot!!!!
