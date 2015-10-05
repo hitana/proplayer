@@ -1,7 +1,8 @@
 #ifndef GLWIDGET_H
 #define GLWIDGET_H
 
-#define ENABLE_YUV_WINDOW       1
+#define ENABLE_YUV_WINDOW       0
+#define HIDE_GL_WHEN_MODAL_OPEN 1
 
 #include <QApplication>
 #include <QGLWidget>

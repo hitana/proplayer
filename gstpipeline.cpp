@@ -45,7 +45,7 @@ void GStreamerPipeline::Configure()
     m_loop = g_main_loop_new (NULL, FALSE);
 #endif
 
-#if 1
+#if 0
     /* Create the elements */
     this->m_pipeline = gst_pipeline_new (NULL);
     if(this->m_videoLocation.isEmpty())
@@ -61,9 +61,9 @@ void GStreamerPipeline::Configure()
     this->m_decodebin = gst_element_factory_make ("decodebin", "decodebin");
     this->m_videosink = gst_element_factory_make ("fakesink", "videosink");
     //this->m_audiosink = gst_element_factory_make ("alsasink", "audiosink");
-    this->m_audiosink = gst_element_factory_make ("autoaudiosink", "audiosink");  // vika
-    this->m_audioconvert = gst_element_factory_make ("audioconvert", "audioconvert");
-    this->m_audioqueue = gst_element_factory_make ("queue", "audioqueue");
+    //this->m_audiosink = gst_element_factory_make ("autoaudiosink", "audiosink");  // vika
+    //this->m_audioconvert = gst_element_factory_make ("audioconvert", "audioconvert");
+    //this->m_audioqueue = gst_element_factory_make ("queue", "audioqueue");
     //this->m_playbin = gst_element_factory_make("playbin", "playbin"); // vika
 
     if (this->m_pipeline == NULL || this->m_source == NULL || this->m_decodebin == NULL ||
@@ -89,6 +89,10 @@ void GStreamerPipeline::Configure()
 
     //----------------------------
     // vika test
+    // works in console:
+    // gst-launch-1.0 playbin uri=file:///home/vq/atomic.ts
+    // gst-launch-1.0 filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink
+
     // gst-launch-1.0 filesrc location=/Users/qa/Downloads/Paradise.mp4 ! decodebin ! autovideosink
 /*
     if (this->m_videoLocation.isEmpty()) {
@@ -100,42 +104,54 @@ void GStreamerPipeline::Configure()
         g_object_set (G_OBJECT (this->m_source), "location", m_videoLocation.toUtf8().constData(), NULL);
     }
 */
-    /*
+    // works good, but plays in separate window
+    //this->m_pipeline = gst_parse_launch ("playbin uri=file:///home/vq/atomic.ts", NULL);
+    this->m_pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
+
+
     // it works fine
+    // no it hangs all system unlit reboot!!!!
+/*
     this->m_source = gst_element_factory_make ("filesrc", "filesrc");
     this->m_pipeline = gst_pipeline_new ("pipeline");
     this->m_decodebin = gst_element_factory_make ("decodebin", "decodebin");
-    //this->m_videosink = gst_element_factory_make ("autovideosink", "videosink");
-    this->m_videosink = gst_element_factory_make ("fakesink", "videosink");
-    this->m_audioconvert = gst_element_factory_make ("audioconvert", "audioconvert");
-    this->m_audioqueue = gst_element_factory_make ("queue", "audioqueue");
-    this->m_audiosink = gst_element_factory_make ("autoaudiosink", "audiosink");
+    this->m_videosink = gst_element_factory_make ("autovideosink", "videosink");
+    //this->m_videosink = gst_element_factory_make ("fakesink", "videosink");
+    //this->m_audioconvert = gst_element_factory_make ("audioconvert", "audioconvert");
+    //this->m_audioqueue = gst_element_factory_make ("queue", "audioqueue");
+    //this->m_audiosink = gst_element_factory_make ("autoaudiosink", "audiosink");
 
     if (this->m_pipeline == NULL)     g_critical ("One of the GStreamer decoding elements is missing - m_pipeline");
     if (this->m_source == NULL)       g_critical ("One of the GStreamer decoding elements is missing - m_source");
     if (this->m_decodebin == NULL)    g_critical ("One of the GStreamer decoding elements is missing - m_decodebin");
     if (this->m_videosink == NULL)    g_critical ("One of the GStreamer decoding elements is missing - m_videosink");
-    if (this->m_audioconvert == NULL) g_critical ("One of the GStreamer decoding elements is missing - m_audioconvert");
-    if (this->m_audioqueue == NULL)   g_critical ("One of the GStreamer decoding elements is missing - m_audioqueue");
-    if (this->m_audiosink == NULL)    g_critical ("One of the GStreamer decoding elements is missing - m_audiosink");
+    //if (this->m_audioconvert == NULL) g_critical ("One of the GStreamer decoding elements is missing - m_audioconvert");
+    //if (this->m_audioqueue == NULL)   g_critical ("One of the GStreamer decoding elements is missing - m_audioqueue");
+    //if (this->m_audiosink == NULL)    g_critical ("One of the GStreamer decoding elements is missing - m_audiosink");
 
-    gst_bin_add_many (GST_BIN (this->m_pipeline), this->m_source, this->m_decodebin, this->m_videosink,
-                      this->m_audiosink, this->m_audioconvert, this->m_audioqueue, NULL);
-    g_signal_connect (this->m_decodebin, "pad-added", G_CALLBACK (on_new_pad), this);
+    //gst_bin_add_many (GST_BIN (this->m_pipeline), this->m_source, this->m_decodebin, this->m_videosink,
+    //                  this->m_audiosink, this->m_audioconvert, this->m_audioqueue, NULL);
 
-    gst_element_link (this->m_source, this->m_decodebin);
-    gst_element_link (this->m_audioqueue, this->m_audioconvert);
-    gst_element_link (this->m_audioconvert, this->m_audiosink);
+    gst_bin_add_many (GST_BIN (this->m_pipeline), this->m_source, this->m_decodebin, this->m_videosink, NULL);
 
-    m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
-    gst_bus_add_watch(m_bus, (GstBusFunc) bus_call, this);
-    gst_object_unref(m_bus);
+    gst_element_link_many(this->m_source, this->m_decodebin, this->m_videosink);
 
-    g_object_set (G_OBJECT (this->m_source), "location", "/Users/qa/Desktop/Paradise.mp4", NULL);
+    //g_signal_connect (this->m_decodebin, "pad-added", G_CALLBACK (on_new_pad), this);
+
+    //gst_element_link (this->m_source, this->m_decodebin);
+    //gst_element_link (this->m_audioqueue, this->m_audioconvert);
+    //gst_element_link (this->m_audioconvert, this->m_audiosink);
+
+    //m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
+    //gst_bus_add_watch(m_bus, (GstBusFunc) bus_call, this);
+    //gst_object_unref(m_bus);
+
+    g_object_set (G_OBJECT (this->m_source), "location", "/home/vq/atomic.ts", NULL);
+*/
     gst_element_set_state (this->m_pipeline, GST_STATE_PAUSED);
-    */
-    //----------------------------
 
+    //----------------------------
+/*
     // vika: decode with elecard avcdecoder
     // GST_PLUGIN_PATH=`pwd` gst-launch-1.0 filesrc location=~/Desktop/media/airshowD1_bp_1_5.264 ! h264parse ! eavcdec ! autovideosink
     this->m_source = gst_element_factory_make ("filesrc", "filesrc");
@@ -163,11 +179,14 @@ void GStreamerPipeline::Configure()
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
     gst_bus_add_watch(m_bus, (GstBusFunc) bus_call, this);
-    gst_object_unref(m_bus);
+    gst_object_unref(m_bus);Paradise.mp4
 
-    g_object_set (G_OBJECT (this->m_source), "location", "/Users/qa/Desktop/media/airshowD1_bp_1_5.264", NULL);
+    //g_object_set (G_OBJECT (this->m_source), "location", "/Users/qa/Desktop/media/airshowD1_bp_1_5.264", NULL);
+    //g_object_set (G_OBJECT (this->m_source), "location", "/home/vq/Paradise.mp4", NULL);
+    g_object_set (G_OBJECT (this->m_source), "location", "/home/vq/atomic.ts", NULL);
     gst_element_set_state (this->m_pipeline, GST_STATE_PAUSED);
-#endif // if 1
+    */
+#endif // if 0
 }
 
 void GStreamerPipeline::Start()

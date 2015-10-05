@@ -1,5 +1,6 @@
 #include <QMainWindow>
 #include "glwidget.h"
+#include <QPicture>
 
 #ifdef GLU_NEEDED
 //vika : in Linux use "GL/glu.h"
@@ -97,11 +98,16 @@ GLWidget::~GLWidget()
 
 void GLWidget::initVideo()
 {
-    loadVideoSlot(); // test
+    //loadVideoSlot(); // test
+
+    qDebug() << "initVideo in";
+
+    this->m_videoLoc.push_back("videoloc");// vika test
 
     // Instantiate video pipeline for each filename specified
     for(int vidIx = 0; vidIx < this->m_videoLoc.size(); vidIx++)
     {
+        qDebug() << "createPipeline...";
         this->m_vidPipelines.push_back(this->createPipeline(vidIx));
 
         if(this->m_vidPipelines[vidIx] == NULL)
@@ -117,6 +123,9 @@ void GLWidget::initVideo()
 
         this->m_vidPipelines[vidIx]->Configure();
     }
+    qDebug() << "initVideo OK.";
+
+    //loadVideoSlot();    // vika test
 }
 
 void GLWidget::initializeGL()
@@ -164,8 +173,6 @@ void GLWidget::initializeGL()
 
     qglClearColor(QColor(Qt::black));
 
-    glClearColor ( 1.0, 1.0, 0.0, 1.0 ); // vika
-
     printOpenGLError(__FILE__, __LINE__);
 
 
@@ -177,6 +184,8 @@ void GLWidget::initializeGL()
     // Set uniforms for vid shaders along with other stream details when first
     // frame comes through
 
+
+    initVideo(); // vika test
 
     if(m_vidPipelines.size() != m_videoLoc.size())
     {
@@ -217,13 +226,13 @@ void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on ma
     Q_UNUSED(event);
 
     makeCurrent();
-
+/*
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-
+*/
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -373,6 +382,14 @@ void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on ma
     // test
     //LOG(LOG_VIDPIPELINE, Logger::Debug2, "paintEvent: this->m_vidTextures.size() = %d", this->m_vidTextures.size());
 
+    QImage yuvImage;
+    QPixmap overlayYuv;
+    QPicture picture;
+/*
+
+    this->m_videoLabel = new QLabel("video label");
+
+
     for(int vidIx = 0; vidIx < this->m_vidTextures.size(); vidIx++)
     {
     glActiveTexture(GL_RECT_VID_TEXTURE1);
@@ -383,28 +400,56 @@ void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on ma
         GstMapInfo info;
         GstBuffer * buf = (GstBuffer*)this->m_vidTextures[vidIx].buffer;
 
-        QImage yuvImage;
+
 
             gst_buffer_map (buf, &info, (GstMapFlags)( GST_MAP_READ ));
             yuvImage = QImage(info.data,
                                 this->m_vidTextures[vidIx].width,
                                 this->m_vidTextures[vidIx].height*1.5f,
                                 QImage::Format_Indexed8);
+
+            picture.setData((const char*)info.data, this->m_vidTextures[vidIx].width * this->m_vidTextures[vidIx].height*1.5f);
+
             gst_buffer_unmap(buf, &info);
 
         yuvImage.setColorTable(m_colourMap);
 
-        QPixmap overlayYuv = QPixmap::fromImage(yuvImage);
+        overlayYuv = QPixmap::fromImage(yuvImage);
 
         this->m_videoLabel->setPixmap(overlayYuv);
+
     }
     // end test
 
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setRenderHint(QPainter::TextAntialiasing);
+*/
 
-    painter.endNativePainting();
+    //////////////////////////////////////////////
+           /*    QPainter painter(&overlayYuv);
+                painter.setRenderHint(QPainter::Antialiasing);
+                painter.setRenderHint(QPainter::TextAntialiasing);
+
+                painter.endNativePainting();
+                QString framesPerSecond;
+                framesPerSecond.setNum(m_frames /(m_frameTime.elapsed() / 1000.0), 'f', 2);
+                painter.setPen(Qt::white);
+
+                painter.drawText(20, 40, framesPerSecond + " fps");*/
+    /////////////////////////////////////////////////
+
+
+
+    QPainter painter(this);
+
+    yuvImage.setColor(0, qRgb(255, 0, 0));
+
+    //painter.drawPicture(0,0,picture);
+painter.drawImage(0, 0, yuvImage);
+painter.setBrush(Qt::blue);
+
+    //painter.setRenderHint(QPainter::Antialiasing);
+    //painter.setRenderHint(QPainter::TextAntialiasing);
+
+    //painter.endNativePainting();
     QString framesPerSecond;
     framesPerSecond.setNum(m_frames /(m_frameTime.elapsed() / 1000.0), 'f', 2);
     painter.setPen(Qt::red);
@@ -412,12 +457,13 @@ void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on ma
     // vika
     static int xpos = 20;
     static int ypos = 40;
-    painter.drawText(xpos, ypos++, framesPerSecond + " fps");
+    //painter.drawText(xpos, ypos++, framesPerSecond + " fps");
+    painter.drawText(xpos, ypos, framesPerSecond + " fps");
     // end test
     //painter.drawText(20, 40, framesPerSecond + " fps");
 
     painter.end();
-    swapBuffers();  // was here
+    swapBuffers();
 
     if (!(m_frames % 100))
     {
@@ -452,6 +498,8 @@ void GLWidget::resizeGL(int wid, int ht)
 
 void GLWidget::newFrame(int vidIx)
 {
+    return;
+
     if(this->m_vidPipelines[vidIx])
     {
         //LOG(LOG_VIDPIPELINE, Logger::Debug2, "vid %d frame %d", vidIx, this->m_vidTextures[vidIx].frameCount++);
@@ -863,6 +911,7 @@ void GLWidget::loadVideoSlot()
     int lastVidDrawn = 0;
 
     if (this->m_vidTextures.size() == 0) {
+        //qDebug() << "WARNING: GLWidget::loadVideoSlot: m_vidTextures.size() == 0.";
         qDebug() << "WARNING: GLWidget::loadVideoSlot: m_vidTextures.size() == 0. Return";
         return;
     }
@@ -871,7 +920,7 @@ void GLWidget::loadVideoSlot()
     /*QString newFileName = QFileDialog::getOpenFileName(0, "Select a video file",
                                                          m_dataFilesDir + "videos/", "Videos (*.avi *.mkv *.ogg *.asf *.mov *.mp4);;All (*.*)");
 */
-    QString newFileName = "/home/vq/Видео/Paradise.mp4";
+    QString newFileName = "/home/Paradise.mp4";
     qDebug() << "GLWidget::loadVideoSlot: selected filename = %s" << newFileName.toUtf8().constData();
 
     if (newFileName.isNull() == false)
