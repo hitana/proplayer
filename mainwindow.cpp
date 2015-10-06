@@ -392,17 +392,22 @@
      glFormat.setSampleBuffers (true);
 
      glWidget = new GLWidget(glFormat, this);
-     //glWidget->initVideo();
      dock = new QDockWidget (tr ("GlWidget"), this);
      dock->setWidget(glWidget);
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
      //--------------------------------------------------
-
-     //GstElement * pipeline;
-     //pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
-     //gst_element_set_state(pipeline, GST_STATE_PAUSED);
-
+/*
+     GstElement * pipeline;
+#ifdef Q_OS_UNIX
+    pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
+#endif
+#ifdef Q_OS_MAC
+    pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink", NULL);
+#endif
+    gst_element_set_state(pipeline, GST_STATE_PAUSED);
+    gst_element_set_state (pipeline, GST_STATE_PLAYING);
+*/
      connect(customerList, SIGNAL(currentTextChanged(QString)),
              this, SLOT(insertCustomer(QString)));
      connect(paragraphsList, SIGNAL(currentTextChanged(QString)),

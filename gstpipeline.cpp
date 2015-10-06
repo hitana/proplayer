@@ -17,7 +17,6 @@ GStreamerPipeline::GStreamerPipeline(int vidIx,
     m_audiosink(NULL),
     m_audioconvert(NULL),
     m_audioqueue(NULL),
-    m_parser(NULL), // vika
     m_loop(NULL),
     m_bus(NULL),
     m_pipeline(NULL)
@@ -41,7 +40,7 @@ void GStreamerPipeline::Configure()
 
     gst_init (NULL, NULL);
 
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
     m_loop = g_main_loop_new (NULL, FALSE);
 #endif
 
@@ -110,7 +109,7 @@ void GStreamerPipeline::Configure()
     this->m_pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
 #endif
 #ifdef Q_OS_MAC
-this->m_pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink", NULL);
+    this->m_pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink", NULL);
 #endif
     // todo : windows ?
 
@@ -146,14 +145,15 @@ this->m_pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/a
     //gst_element_link (this->m_source, this->m_decodebin);
     //gst_element_link (this->m_audioqueue, this->m_audioconvert);
     //gst_element_link (this->m_audioconvert, this->m_audiosink);
-
-    //m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
-    //gst_bus_add_watch(m_bus, (GstBusFunc) bus_call, this);
-    //gst_object_unref(m_bus);
-
+*/
+    m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
+    gst_bus_add_watch(m_bus, (GstBusFunc) bus_call, this);
+    gst_object_unref(m_bus);
+/*
     g_object_set (G_OBJECT (this->m_source), "location", "/home/vq/atomic.ts", NULL);
 */
-    gst_element_set_state (this->m_pipeline, GST_STATE_PAUSED);
+    //gst_element_set_state (this->m_pipeline, GST_STATE_PAUSED);
+    gst_element_set_state (this->m_pipeline, GST_STATE_PLAYING);
 
     //----------------------------
 /*
@@ -221,7 +221,7 @@ void GStreamerPipeline::Start()
 
 void GStreamerPipeline::Stop()
 {
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
     g_main_loop_quit(m_loop);
 #else
     emit stopRequested();
@@ -689,7 +689,7 @@ void GstIncomingBufThread::run()
     qDebug() << "GStreamerPipeline: vid %d incoming buf thread started" <<
         m_pipelinePtr->getVidIx();
 
-#ifndef Q_WS_WIN
+#ifndef Q_OS_WIN
     //works like the gmainloop on linux (GstEvent are handled)
     QObject::connect(m_pipelinePtr, SIGNAL(stopRequested()), this, SLOT(quit()));
     exec();

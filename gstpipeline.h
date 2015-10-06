@@ -78,8 +78,6 @@ public:
     GstElement *m_audioconvert;
     GstElement *m_audioqueue;
 
-    GstElement *m_parser;   // vika
-
 signals:
     void stopRequested();
 

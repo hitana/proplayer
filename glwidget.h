@@ -161,8 +161,6 @@ public Q_SLOTS:
     void cycleVidShaderSlot();
     void cycleModelShaderSlot();
     void showYUVWindowSlot();
-    void loadVideoSlot();
-    void loadModelSlot();
     void loadAlphaSlot();
     void rotateToggleSlot(bool toggleState);
     void stackVidsToggleSlot(int toggleState);
@@ -192,9 +190,6 @@ protected:
 private:
     void setAppropriateVidShader(int vidIx);
     void setVidShaderVars(int vidIx, bool printErrors);
-    int loadShaderFile(QString fileName, QString &shaderSource);
-    int setupShader(QGLShaderProgram *prog, QString baseFileName, bool vertNeeded, bool fragNeeded);
-    int setupShader(QGLShaderProgram *prog, GLShaderModule shaderList[], int listLen);
     int getCallingGstVecIx(int vidIx);
 
     bool m_closing;

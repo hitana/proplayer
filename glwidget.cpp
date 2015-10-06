@@ -15,14 +15,6 @@ GLWidget::GLWidget(const QGLFormat& format, QWidget *parent) :
     m_closing(false),
     m_brickProg(this)
 {
-    // test
- /*   m_videoLabel = new QLabel(this);
-    QLayout *layout = this->layout();
-    layout->addWidget(m_videoLabel);
-
-    m_videoLabel->setText("Hello, i am videoLabel!");
-    // end test
-*/
     qDebug() << "GLWidget constructor entered";
 
     m_xRot = 0;
@@ -61,11 +53,18 @@ GLWidget::GLWidget(const QGLFormat& format, QWidget *parent) :
     {
         //int vidIx = 1;
         //m_videoLoc.push_back(QString(argv[vidIx]));
-    }
+    }/*
+#ifdef Q_OS_UNIX
+    m_videoLoc.push_back("/home/vq/atomic.ts");
+#endif
+#ifdef Q_OS_MAC
+    m_videoLoc.push_back("/Users/qa/Desktop/media/atomic.ts");
+#endif
 
+*/
 
     m_frames = 0;
-    setAttribute(Qt::WA_PaintOnScreen);
+    setAttribute(Qt::WA_PaintOnScreen);     // ???
     setAttribute(Qt::WA_NoSystemBackground);
     setAutoBufferSwap(false);
     setAutoFillBackground(false);
@@ -462,6 +461,9 @@ painter.setBrush(Qt::blue);
     // end test
     //painter.drawText(20, 40, framesPerSecond + " fps");
 
+    painter.drawRect(70, 70, 50, 50);
+    //painter.drawImage(20, 20);
+
     painter.end();
     swapBuffers();
 
@@ -498,11 +500,12 @@ void GLWidget::resizeGL(int wid, int ht)
 
 void GLWidget::newFrame(int vidIx)
 {
-    return;
+    //return;
+    qDebug() << "newFrame in";
 
     if(this->m_vidPipelines[vidIx])
     {
-        //LOG(LOG_VIDPIPELINE, Logger::Debug2, "vid %d frame %d", vidIx, this->m_vidTextures[vidIx].frameCount++);
+        qDebug() <<  "vid %d frame %d" << vidIx << this->m_vidTextures[vidIx].frameCount++;
 
         Pipeline *pipeline = this->m_vidPipelines[vidIx];
 
@@ -511,8 +514,8 @@ void GLWidget::newFrame(int vidIx)
            system */
         if(this->m_vidTextures[vidIx].buffer)
         {
-            //pipeline->m_outgoingBufQueue.put(this->m_vidTextures[vidIx].buffer);
-            //LOG(LOG_VIDPIPELINE, Logger::Debug2, "vid %d pushed buffer %p to outgoing queue", vidIx, this->m_vidTextures[vidIx].buffer);
+            pipeline->m_outgoingBufQueue.put(this->m_vidTextures[vidIx].buffer);
+            qDebug() << "vid %d pushed buffer %p to outgoing queue" << vidIx << this->m_vidTextures[vidIx].buffer;
         }
 
         void *newBuf = NULL;
@@ -526,7 +529,7 @@ void GLWidget::newFrame(int vidIx)
             return;
         }
 
-        //LOG(LOG_VIDPIPELINE, Logger::Debug2, "vid %d popped buffer %p from incoming queue", vidIx, this->m_vidTextures[vidIx].buffer);
+        qDebug() << "vid %d popped buffer %p from incoming queue" << vidIx << this->m_vidTextures[vidIx].buffer;
 
         this->makeCurrent();
 
@@ -901,48 +904,6 @@ void GLWidget::showYUVWindowSlot()
 #endif
 }
 
-void GLWidget::loadVideoSlot()
-{
-#ifdef HIDE_GL_WHEN_MODAL_OPEN
-    QSize currentSize = this->size();
-    this->resize(0, 0);
-#endif
-
-    int lastVidDrawn = 0;
-
-    if (this->m_vidTextures.size() == 0) {
-        //qDebug() << "WARNING: GLWidget::loadVideoSlot: m_vidTextures.size() == 0.";
-        qDebug() << "WARNING: GLWidget::loadVideoSlot: m_vidTextures.size() == 0. Return";
-        return;
-    }
-    lastVidDrawn = this->m_vidTextures.size() - 1;
-
-    /*QString newFileName = QFileDialog::getOpenFileName(0, "Select a video file",
-                                                         m_dataFilesDir + "videos/", "Videos (*.avi *.mkv *.ogg *.asf *.mov *.mp4);;All (*.*)");
-*/
-    QString newFileName = "/home/Paradise.mp4";
-    qDebug() << "GLWidget::loadVideoSlot: selected filename = %s" << newFileName.toUtf8().constData();
-
-    if (newFileName.isNull() == false)
-    {
-        this->m_videoLoc[lastVidDrawn] = newFileName;
-
-        //this->m_vidPipelines[lastVidDrawn]->setChooseNewOnFinished();
-        this->m_vidPipelines[lastVidDrawn]->Stop();
-    }
-
-#ifdef HIDE_GL_WHEN_MODAL_OPEN
-    this->resize(currentSize);
-#endif
-
-    qDebug() << "GLWidget::loadVideoSlot: OK";
-}
-
-void GLWidget::loadModelSlot()
-{
-
-}
-
 void GLWidget::loadAlphaSlot()
 {
 #ifdef HIDE_GL_WHEN_MODAL_OPEN
@@ -1149,15 +1110,6 @@ void GLWidget::keyPressEvent(QKeyEvent *e)
             break;
         case Qt::Key_A:
             loadAlphaSlot();
-            break;
-        case Qt::Key_M:
-            loadModelSlot();
-            break;
-        case Qt::Key_V:
-            loadVideoSlot();
-            break;
-        case Qt::Key_O:
-            cycleModelShaderSlot();
             break;
         case Qt::Key_P:
             // Decouple bool used within class from Qt check box state enum values
@@ -1384,137 +1336,6 @@ void GLWidget::setVidShaderVars(int vidIx, bool printErrors)
         break;
     }
 }
-
-int GLWidget::loadShaderFile(QString fileName, QString &shaderSource)
-{
-    fileName = m_dataFilesDir + fileName;
-
-    shaderSource.clear();
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        qDebug() << "File '%s' does not exist!" << qPrintable(fileName);
-        return -1;
-    }
-
-    QTextStream in(&file);
-    while (!in.atEnd())
-    {
-        shaderSource += in.readLine();
-        shaderSource += "\n";
-    }
-
-    return 0;
-}
-
-int GLWidget::setupShader(QGLShaderProgram *prog, GLShaderModule shaderList[], int listLen)
-{
-    bool ret;
-
-    qDebug() <<  "-- Setting up a new full shader: --";
-
-    QString shaderSource;
-    QString shaderSourceFileNames;
-    QString fullShaderSourceFileNames;
-    for(int listIx = 0; listIx < listLen; listIx++)
-    {
-        if(shaderList[listIx].type == QGLShader::Vertex)
-        {
-            QString nextShaderSource;
-
-            qDebug() <<  "concatenating %s" << shaderList[listIx].sourceFileName;
-            shaderSourceFileNames += shaderList[listIx].sourceFileName;
-            shaderSourceFileNames += ", ";
-            fullShaderSourceFileNames += shaderList[listIx].sourceFileName;
-            fullShaderSourceFileNames += ", ";
-
-            ret = loadShaderFile(shaderList[listIx].sourceFileName, nextShaderSource);
-            if(ret != 0)
-            {
-                return ret;
-            }
-
-            shaderSource += nextShaderSource;
-        }
-    }
-
-    if(!shaderSource.isEmpty())
-    {
-        qDebug() <<  "compiling vertex shader";
-
-        ret = prog->addShaderFromSourceCode(QGLShader::Vertex, shaderSource);
-
-        if(ret == false)
-        {
-            qDebug() <<  "Compile log for vertex shader sources %s:\n%s\n" <<
-                shaderSourceFileNames.toUtf8().constData() <<
-                prog->log().toUtf8().constData();
-            return -1;
-        }
-    }
-
-    shaderSource.clear();
-    shaderSourceFileNames.clear();
-
-    for(int listIx = 0; listIx < listLen; listIx++)
-    {
-        if(shaderList[listIx].type == QGLShader::Fragment)
-        {
-            QString nextShaderSource;
-
-            qDebug() << "concatenating %s" << shaderList[listIx].sourceFileName;
-            shaderSourceFileNames += shaderList[listIx].sourceFileName;
-            shaderSourceFileNames += ", ";
-            fullShaderSourceFileNames += shaderList[listIx].sourceFileName;
-            fullShaderSourceFileNames += ", ";
-
-            ret = loadShaderFile(shaderList[listIx].sourceFileName, nextShaderSource);
-            if(ret != 0)
-            {
-                return ret;
-            }
-
-            shaderSource += nextShaderSource;
-        }
-    }
-
-    if(!shaderSource.isEmpty())
-    {
-        qDebug() << "compiling fragment shader" ;
-
-        ret = prog->addShaderFromSourceCode(QGLShader::Fragment, shaderSource);
-
-        if(ret == false)
-        {
-            qDebug() << "Compile log for fragment shader sources %s:\n%s\n" <<
-                shaderSourceFileNames.toUtf8().constData() <<
-                prog->log().toUtf8().constData();
-            return -1;
-        }
-    }
-
-    ret = prog->link();
-    if(ret == false)
-    {
-        qDebug() << "Link log for shader sources %s:\n%s\n" <<
-            fullShaderSourceFileNames.toUtf8().constData() <<
-            prog->log().toUtf8().constData();
-        return -1;
-    }
-
-    ret = prog->bind();
-    if(ret == false)
-    {
-        qDebug() << "Error binding shader from sources %s" <<
-            fullShaderSourceFileNames.toUtf8().constData();
-        return -1;
-    } 
-
-    printOpenGLError(__FILE__, __LINE__);
-
-    return 0;
-}
-
 
 int GLWidget::printOpenGLError(const char *file, int line)
 {
