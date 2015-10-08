@@ -50,7 +50,7 @@ macx
   LIBS += -L/usr/local/Cellar/glib/2.44.1/lib
   LIBS += -L/usr/local/opt/gettext/lib
   #LIBS += -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lintl
-  LIBS += -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0
+  LIBS += -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lgstbase-1.0 -lgstvideo-1.0
 }
 
 win32 {

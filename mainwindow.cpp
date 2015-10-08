@@ -42,6 +42,13 @@
 #include <QtPrintSupport>
 #include <QtWidgets>
 
+#ifdef Q_OS_UNIX
+#define DEFAULT_VIDEOSINK "xvimagesink"
+#endif
+#ifdef Q_OS_MAC
+#define DEFAULT_VIDEOSINK "autovideosink"
+#endif
+
 #include "mainwindow.h"
 
 /* slightly convoluted way to find a working video sink that's not a bin,
@@ -54,8 +61,10 @@ static GstElement * find_video_sink (void)
 
   if ((sink = gst_element_factory_make ("xvimagesink", NULL))) {
     sret = gst_element_set_state (sink, GST_STATE_READY);
-    if (sret == GST_STATE_CHANGE_SUCCESS)
-      return sink;
+    if (sret == GST_STATE_CHANGE_SUCCESS){
+        qDebug() << "found xvimagesink";
+        return sink;
+    }
 
     gst_element_set_state (sink, GST_STATE_NULL);
     gst_object_unref (sink);
@@ -63,14 +72,35 @@ static GstElement * find_video_sink (void)
 
   if ((sink = gst_element_factory_make ("ximagesink", NULL))) {
     sret = gst_element_set_state (sink, GST_STATE_READY);
-    if (sret == GST_STATE_CHANGE_SUCCESS)
-      return sink;
+    if (sret == GST_STATE_CHANGE_SUCCESS){
+        qDebug() << "found ximagesink";
+        return sink;
+    }
 
     gst_element_set_state (sink, GST_STATE_NULL);
     gst_object_unref (sink);
   }
 
-#define DEFAULT_VIDEOSINK "xvimagesink"
+  if ((sink = gst_element_factory_make ("autovideosink", NULL))) {
+    sret = gst_element_set_state (sink, GST_STATE_READY);
+    if (sret == GST_STATE_CHANGE_SUCCESS){
+        qDebug() << "found autovideosink";
+        return sink;
+    }
+
+    gst_element_set_state (sink, GST_STATE_NULL);
+    gst_object_unref (sink);
+  }
+  if ((sink = gst_element_factory_make ("osxvideosink", NULL))) {
+    sret = gst_element_set_state (sink, GST_STATE_READY);
+    if (sret == GST_STATE_CHANGE_SUCCESS){
+        qDebug() << "found osxvideosink";
+        return sink;
+    }
+
+    gst_element_set_state (sink, GST_STATE_NULL);
+    gst_object_unref (sink);
+  }
   //if (strcmp (DEFAULT_VIDEOSINK, "xvimagesink") == 0 ||
   //    strcmp (DEFAULT_VIDEOSINK, "ximagesink") == 0)
   //  return NULL;
@@ -83,7 +113,10 @@ static GstElement * find_video_sink (void)
 
     sret = gst_element_set_state (sink, GST_STATE_READY);
     if (sret == GST_STATE_CHANGE_SUCCESS)
-      return sink;
+ {
+        qDebug() << "found " << DEFAULT_VIDEOSINK;
+        return sink;
+    }
 
     gst_element_set_state (sink, GST_STATE_NULL);
     gst_object_unref (sink);
@@ -453,6 +486,7 @@ static GstElement * find_video_sink (void)
      GstElement *src = gst_element_factory_make ("videotestsrc", NULL);
      GstElement *sink = find_video_sink ();
 
+     if (src == NULL) g_error ("Couldn't create video src.");
      if (sink == NULL) g_error ("Couldn't find a working video sink.");
 
      gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
@@ -460,8 +494,10 @@ static GstElement * find_video_sink (void)
 
      gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (sink), glWidget->getWindowId());
 
+     //GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PAUSED);
      GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
      if (sret == GST_STATE_CHANGE_FAILURE) {
+         qDebug() << "got GST_STATE_CHANGE_FAILURE...";
        gst_element_set_state (pipeline, GST_STATE_NULL);
        gst_object_unref (pipeline);
        // Exit application
