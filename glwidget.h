@@ -22,6 +22,7 @@
 #include "pipeline.h"
 #include "gstpipeline.h"
 #include <gst/gst.h>
+#include <gst/video/videooverlay.h>
 
 #ifdef ENABLE_YUV_WINDOW
 #include "yuvdebugwindow.h"
@@ -141,9 +142,7 @@ public:
     void setYRotation(int angle);
     void setZRotation(int angle);
 
-    // test
-    QLabel *m_videoLabel;
-    // end test
+    WId getWindowId();
 
 Q_SIGNALS:
     void closeRequested();
@@ -159,7 +158,6 @@ public Q_SLOTS:
     void pipelineFinished(int vidIx);
     /* Input event handlers */
     void cycleVidShaderSlot();
-    void cycleModelShaderSlot();
     void showYUVWindowSlot();
     void loadAlphaSlot();
     void rotateToggleSlot(bool toggleState);

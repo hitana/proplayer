@@ -8,6 +8,10 @@
  #include "OpenGL/glu.h"
 #endif
 
+WId GLWidget::getWindowId()
+{
+    return this->winId();
+}
 
 GLWidget::GLWidget(const QGLFormat& format, QWidget *parent) :
     //QGLWidget(QGLFormat(QGL::DoubleBuffer | QGL::DepthBuffer | QGL::Rgba), parent),
@@ -184,7 +188,7 @@ void GLWidget::initializeGL()
     // frame comes through
 
 
-    initVideo(); // vika test
+    //initVideo(); // vika test
 
     if(m_vidPipelines.size() != m_videoLoc.size())
     {
@@ -222,6 +226,7 @@ Pipeline* GLWidget::createPipeline(int vidIx)
 
 void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on main video window
 {
+    return; // test
     Q_UNUSED(event);
 
     makeCurrent();
@@ -234,152 +239,6 @@ void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on ma
 */
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-//////////////////////////////////////////////////////////////////////
-    /*this->m_modelViewMatrix = QMatrix4x4();
-    this->m_modelViewMatrix.lookAt(QVector3D(0.0, 0.0, -5.0), QVector3D(0.0, 0.0, 0.0), QVector3D(0.0, 1.0, 0.0));
-    this->m_modelViewMatrix.rotate(-m_zRot / 16.0, 0.0, 0.0, 1.0);
-    this->m_modelViewMatrix.rotate(-m_xRot / 16.0, 1.0, 0.0, 0.0);
-    this->m_modelViewMatrix.rotate(m_yRot / 16.0, 0.0, 1.0, 0.0);
-    this->m_modelViewMatrix.scale(m_scaleValue);
-
-    // Draw an object in the middle
-    ModelEffectType enabledModelEffect = m_currentModelEffectIndex;
-    QGLShaderProgram *currentShader = NULL;
-    switch(enabledModelEffect)
-    {
-    case ModelEffectBrick:
-        m_brickProg.bind();
-        currentShader = &m_brickProg;
-        break;
-    case ModelEffectVideo:
-        glActiveTexture(GL_RECT_VID_TEXTURE0);
-        glBindTexture(GL_RECT_VID_TEXTURE_2D, this->m_vidTextures[0].texId);
-
-#ifdef TEXCOORDS_ALREADY_NORMALISED
-        this->m_vidTextures[0].effect = VidShaderNoEffect;
-#else
-        this->m_vidTextures[0].effect = VidShaderNoEffectNormalisedTexCoords;
-#endif
-
-        setAppropriateVidShader(0);
-        this->m_vidTextures[0].shader->bind();
-        setVidShaderVars(0, false);
-
-        currentShader = this->m_vidTextures[0].shader;
-        break;
-
-    case ModelEffectVideoLit:
-        glActiveTexture(GL_RECT_VID_TEXTURE0);
-        glBindTexture(GL_RECT_VID_TEXTURE_2D, this->m_vidTextures[0].texId);
-
-#ifdef TEXCOORDS_ALREADY_NORMALISED
-        this->m_vidTextures[0].effect = VidShaderLit;
-#else
-        this->m_vidTextures[0].effect = VidShaderLitNormalisedTexCoords;
-#endif
-        setAppropriateVidShader(0);
-        this->m_vidTextures[0].shader->bind();
-        setVidShaderVars(0, false);
-
-        currentShader = this->m_vidTextures[0].shader;
-        break;
-    }
-
-    m_model->Draw(m_modelViewMatrix, m_projectionMatrix, currentShader, false);
-
-    switch(enabledModelEffect)
-    {
-    case ModelEffectBrick:
-        currentShader->release();
-        break;
-    case ModelEffectVideo:
-    case ModelEffectVideoLit:
-        this->m_vidTextures[0].effect = VidShaderNoEffect;
-        setAppropriateVidShader(0);
-        this->m_vidTextures[0].shader->bind();
-        setVidShaderVars(0, false);
-
-        printOpenGLError(__FILE__, __LINE__);
-        break;
-    }
-
-    // Draw videos around the object
-    for(int vidIx = 0; vidIx < this->m_vidTextures.size(); vidIx++)
-    {
-        if(this->m_vidTextures[vidIx].texInfoValid)
-        {
-            // Render a quad with the video on it:
-            glActiveTexture(GL_RECT_VID_TEXTURE0);
-            glBindTexture(GL_RECT_VID_TEXTURE_2D, this->m_vidTextures[vidIx].texId);
-            printOpenGLError(__FILE__, __LINE__);
-
-            if((this->m_vidTextures[vidIx].effect == VidShaderAlphaMask) && this->m_alphaTextureLoaded)
-            {
-                glEnable (GL_BLEND);
-                glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glActiveTexture(GL_RECT_TEXTURE1);
-                glBindTexture(GL_RECT_TEXTURE_2D, this->m_alphaTextureId);
-            }
-
-            this->m_vidTextures[vidIx].shader->bind();
-            setVidShaderVars(vidIx, false);
-            printOpenGLError(__FILE__, __LINE__);
-
-            if(this->m_vidTextures[vidIx].effect == VidShaderColourHilightSwap)
-            {
-                this->m_vidTextures[vidIx].shader->setUniformValue("u_componentSwapR", m_colourComponentSwapR);
-                this->m_vidTextures[vidIx].shader->setUniformValue("u_componentSwapG", m_colourComponentSwapG);
-                this->m_vidTextures[vidIx].shader->setUniformValue("u_componentSwapB", m_colourComponentSwapB);
-            }
-
-            QGLShaderProgram *vidShader = this->m_vidTextures[vidIx].shader;
-
-            QMatrix4x4 vidQuadMatrix = this->m_modelViewMatrix;
-
-            if(m_stackVidQuads)
-            {
-                vidQuadMatrix.translate(0.0, 0.0, 2.0);
-                vidQuadMatrix.translate(0.0, 0.0, 0.2*vidIx);
-            }
-            else
-            {
-                vidQuadMatrix.rotate((360/this->m_vidTextures.size())*vidIx, 0.0, 1.0, 0.0);
-                vidQuadMatrix.translate(0.0, 0.0, 2.0);
-            }
-
-
-            vidShader->setUniformValue("u_mvp_matrix", m_projectionMatrix * vidQuadMatrix);
-            vidShader->setUniformValue("u_mv_matrix", vidQuadMatrix);
-
-            // Need to set these arrays up here as shader instances are shared between
-            // all the videos:
-            vidShader->enableAttributeArray("a_texCoord");
-            vidShader->setAttributeArray("a_texCoord", this->m_vidTextures[vidIx].triStripTexCoords);
-
-            if(this->m_vidTextures[vidIx].effect == VidShaderAlphaMask)
-            {
-                vidShader->enableAttributeArray("a_alphaTexCoord");
-                vidShader->setAttributeArray("a_alphaTexCoord", this->m_vidTextures[vidIx].triStripAlphaTexCoords);
-            }
-
-            vidShader->enableAttributeArray("a_vertex");
-            vidShader->setAttributeArray("a_vertex", this->m_vidTextures[vidIx].triStripVertices);
-
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-            vidShader->disableAttributeArray("a_vertex");
-            if(this->m_vidTextures[vidIx].effect == VidShaderAlphaMask)
-            {
-                vidShader->disableAttributeArray("a_alphaTexCoord");
-            }
-            vidShader->disableAttributeArray("a_texCoord");
-        }
-    }*/
-    //////////////////////////////////////////////////////////////////////
-
-    // test
-    //LOG(LOG_VIDPIPELINE, Logger::Debug2, "paintEvent: this->m_vidTextures.size() = %d", this->m_vidTextures.size());
 
     QImage yuvImage;
     QPixmap overlayYuv;
@@ -876,16 +735,6 @@ void GLWidget::cycleVidShaderSlot()
 
     qDebug() << "vid shader for vid %d now set to %d" <<
         lastVidDrawn, this->m_vidTextures[lastVidDrawn].effect;
-}
-
-void GLWidget::cycleModelShaderSlot()
-{
-    if (m_currentModelEffectIndex >= ModelEffectLast)
-        m_currentModelEffectIndex = ModelEffectFirst;
-    else
-        m_currentModelEffectIndex = (ModelEffectType) ((int) m_currentModelEffectIndex + 1);
-
-    qDebug() << "model shader now set to %d" << m_currentModelEffectIndex;
 }
 
 void GLWidget::showYUVWindowSlot()

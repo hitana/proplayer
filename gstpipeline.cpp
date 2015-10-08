@@ -106,7 +106,9 @@ void GStreamerPipeline::Configure()
     // works good, but plays in separate window
     //this->m_pipeline = gst_parse_launch ("playbin uri=file:///home/vq/atomic.ts", NULL);
 #ifdef Q_OS_UNIX
-    this->m_pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
+    //this->m_pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
+    this->m_pipeline = gst_parse_launch("videomixer name=mix sink_1::xpos=20 sink_1::ypos=20 sink_1::alpha=0.5 sink_1::zorder=3 sink_2::xpos=100 sink_2::ypos=100 sink_2::zorder=2 ! xvimagesink videotestsrc ! video/x-raw, framerate=10/1, width=640, height=360 ! mix.sink_0 videotestsrc pattern=\"snow\" ! video/x-raw, framerate=10/1, width=200, height=150 ! mix.sink_1 videotestsrc pattern=13 ! video/x-raw, framerate=10/1, width=200, height=150 ! mix.sink_2", NULL);
+    //this->m_pipe = GST_PIPELINE(gst_parse_launch("videomixer name=mix sink_1::xpos=20 sink_1::ypos=20 sink_1::alpha=0.5 sink_1::zorder=3 sink_2::xpos=100 sink_2::ypos=100 sink_2::zorder=2 ! xvimagesink videotestsrc ! video/x-raw, framerate=10/1, width=640, height=360 ! mix.sink_0 videotestsrc pattern=\"snow\" ! video/x-raw, framerate=10/1, width=200, height=150 ! mix.sink_1 videotestsrc pattern=13 ! video/x-raw, framerate=10/1, width=200, height=150 ! mix.sink_2", NULL));
 #endif
 #ifdef Q_OS_MAC
     this->m_pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink", NULL);

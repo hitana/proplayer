@@ -29,7 +29,7 @@ CONFIG += console
   INCLUDEPATH +=/usr/local/include/gstreamer-1.0
   INCLUDEPATH +=/usr/include/gstreamer-1.0
   INCLUDEPATH +=/usr/local/lib/gstreamer-1.0/include/
-  LIBS += -L/usr/local/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0
+  LIBS += -L/usr/local/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lgstbase-1.0 -lgstvideo-1.0
 
  }
 

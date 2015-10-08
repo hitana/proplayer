@@ -44,6 +44,54 @@
 
 #include "mainwindow.h"
 
+/* slightly convoluted way to find a working video sink that's not a bin,
+ * one could use autovideosink from gst-plugins-good instead
+ */
+static GstElement * find_video_sink (void)
+{
+  GstStateChangeReturn sret;
+  GstElement *sink;
+
+  if ((sink = gst_element_factory_make ("xvimagesink", NULL))) {
+    sret = gst_element_set_state (sink, GST_STATE_READY);
+    if (sret == GST_STATE_CHANGE_SUCCESS)
+      return sink;
+
+    gst_element_set_state (sink, GST_STATE_NULL);
+    gst_object_unref (sink);
+  }
+
+  if ((sink = gst_element_factory_make ("ximagesink", NULL))) {
+    sret = gst_element_set_state (sink, GST_STATE_READY);
+    if (sret == GST_STATE_CHANGE_SUCCESS)
+      return sink;
+
+    gst_element_set_state (sink, GST_STATE_NULL);
+    gst_object_unref (sink);
+  }
+
+#define DEFAULT_VIDEOSINK "xvimagesink"
+  //if (strcmp (DEFAULT_VIDEOSINK, "xvimagesink") == 0 ||
+  //    strcmp (DEFAULT_VIDEOSINK, "ximagesink") == 0)
+  //  return NULL;
+
+  if ((sink = gst_element_factory_make (DEFAULT_VIDEOSINK, NULL))) {
+    if (GST_IS_BIN (sink)) {
+      gst_object_unref (sink);
+      return NULL;
+    }
+
+    sret = gst_element_set_state (sink, GST_STATE_READY);
+    if (sret == GST_STATE_CHANGE_SUCCESS)
+      return sink;
+
+    gst_element_set_state (sink, GST_STATE_NULL);
+    gst_object_unref (sink);
+  }
+
+  return NULL;
+}
+
  MainWindow::MainWindow()
  {
      textEdit = new QTextEdit;
@@ -396,6 +444,30 @@
      dock->setWidget(glWidget);
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
+
+
+     //---------------------------------------------------
+     gst_init (NULL, NULL);
+
+     GstElement *pipeline = gst_pipeline_new ("xvoverlay");
+     GstElement *src = gst_element_factory_make ("videotestsrc", NULL);
+     GstElement *sink = find_video_sink ();
+
+     if (sink == NULL) g_error ("Couldn't find a working video sink.");
+
+     gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
+     gst_element_link (src, sink);
+
+     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (sink), glWidget->getWindowId());
+
+     GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+     if (sret == GST_STATE_CHANGE_FAILURE) {
+       gst_element_set_state (pipeline, GST_STATE_NULL);
+       gst_object_unref (pipeline);
+       // Exit application
+       //QTimer::singleShot(0, QApplication::activeWindow(), SLOT(quit()));
+     }
+
      //--------------------------------------------------
 /*
      GstElement * pipeline;
