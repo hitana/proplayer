@@ -502,10 +502,16 @@ static GstElement * find_video_sink (void)
      }
      */
      // version 2
+     // todo : seems glimagesink plays i-frames only
      //GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink name=vsink sync=false", NULL);
-     GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
+#ifdef Q_OS_UNIX
+    GstElement * pipeline = gst_parse_launch("filesrc location=/home/vq/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
+#endif
+#ifdef Q_OS_MAC
+    GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
+#endif
+
      GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
-     //GstVideoOverlay *overlay = gst_video_overlay_prepare_window_handle();
      gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
      gst_object_unref (vsink);
      GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
