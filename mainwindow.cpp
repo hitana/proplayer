@@ -42,12 +42,7 @@
 #include <QtPrintSupport>
 #include <QtWidgets>
 
-#ifdef Q_OS_UNIX
-#define DEFAULT_VIDEOSINK "xvimagesink"
-#endif
-#ifdef Q_OS_MAC
 #define DEFAULT_VIDEOSINK "autovideosink"
-#endif
 
 #include "mainwindow.h"
 
@@ -81,16 +76,6 @@ static GstElement * find_video_sink (void)
     gst_object_unref (sink);
   }
 
-  if ((sink = gst_element_factory_make ("autovideosink", NULL))) {
-    sret = gst_element_set_state (sink, GST_STATE_READY);
-    if (sret == GST_STATE_CHANGE_SUCCESS){
-        qDebug() << "found autovideosink";
-        return sink;
-    }
-
-    gst_element_set_state (sink, GST_STATE_NULL);
-    gst_object_unref (sink);
-  }
   if ((sink = gst_element_factory_make ("osxvideosink", NULL))) {
     sret = gst_element_set_state (sink, GST_STATE_READY);
     if (sret == GST_STATE_CHANGE_SUCCESS){
@@ -101,6 +86,18 @@ static GstElement * find_video_sink (void)
     gst_element_set_state (sink, GST_STATE_NULL);
     gst_object_unref (sink);
   }
+
+  if ((sink = gst_element_factory_make ("autovideosink", NULL))) {
+      sret = gst_element_set_state (sink, GST_STATE_READY);
+      if (sret == GST_STATE_CHANGE_SUCCESS){
+          qDebug() << "found autovideosink";
+          return sink;
+      }
+
+      gst_element_set_state (sink, GST_STATE_NULL);
+      gst_object_unref (sink);
+    }
+
   //if (strcmp (DEFAULT_VIDEOSINK, "xvimagesink") == 0 ||
   //    strcmp (DEFAULT_VIDEOSINK, "ximagesink") == 0)
   //  return NULL;
@@ -481,7 +478,7 @@ static GstElement * find_video_sink (void)
 
      //---------------------------------------------------
      gst_init (NULL, NULL);
-
+/*
      GstElement *pipeline = gst_pipeline_new ("xvoverlay");
      GstElement *src = gst_element_factory_make ("videotestsrc", NULL);
      GstElement *sink = find_video_sink ();
@@ -492,7 +489,7 @@ static GstElement * find_video_sink (void)
      gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
      gst_element_link (src, sink);
 
-     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (sink), glWidget->getWindowId());
+     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (sink), (guintptr)glWidget->getWindowId());
 
      //GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PAUSED);
      GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
@@ -503,6 +500,15 @@ static GstElement * find_video_sink (void)
        // Exit application
        //QTimer::singleShot(0, QApplication::activeWindow(), SLOT(quit()));
      }
+     */
+     // version 2
+     //GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink name=vsink sync=false", NULL);
+     GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
+     GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
+     //GstVideoOverlay *overlay = gst_video_overlay_prepare_window_handle();
+     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
+     gst_object_unref (vsink);
+     GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
      //--------------------------------------------------
 /*
