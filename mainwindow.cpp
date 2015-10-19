@@ -298,9 +298,24 @@ static GstElement * find_video_sink (void)
      return;
  }
 
- void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
- {
-     qDebug() << "Playing " << playList->currentRow() << ", " << playList->currentItem()->text();
+void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
+{
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! glimagesink name=vsink sync=false");
+    char pipelineChars[PATH_MAX];
+    sprintf (pipelineChars, "%s", pipelineString.toLocal8Bit().data());
+    //sprintf (pipelineChars, "%s", pipelineString.toLatin1().data());
+    //sprintf (pipelineChars, "%s", pipelineString.toStdString().c_str());
+
+    qDebug() << "Playing " << playList->currentRow() << ", " << playList->currentItem()->text();
+    qDebug() << "pipeline = " << pipelineString;
+
+    // todo : seems glimagesink plays i-frames only
+    GstElement * pipeline = gst_parse_launch(pipelineChars, NULL);
+    GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
+    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
+    gst_object_unref (vsink);
+    GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
 
      /* Create a new Media */
      //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcInstance, playList->currentItem()->text().toStdString().c_str());
@@ -475,35 +490,9 @@ static GstElement * find_video_sink (void)
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
-
      //---------------------------------------------------
      gst_init (NULL, NULL);
 /*
-     GstElement *pipeline = gst_pipeline_new ("xvoverlay");
-     GstElement *src = gst_element_factory_make ("videotestsrc", NULL);
-     GstElement *sink = find_video_sink ();
-
-     if (src == NULL) g_error ("Couldn't create video src.");
-     if (sink == NULL) g_error ("Couldn't find a working video sink.");
-
-     gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
-     gst_element_link (src, sink);
-
-     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (sink), (guintptr)glWidget->getWindowId());
-
-     //GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PAUSED);
-     GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
-     if (sret == GST_STATE_CHANGE_FAILURE) {
-         qDebug() << "got GST_STATE_CHANGE_FAILURE...";
-       gst_element_set_state (pipeline, GST_STATE_NULL);
-       gst_object_unref (pipeline);
-       // Exit application
-       //QTimer::singleShot(0, QApplication::activeWindow(), SLOT(quit()));
-     }
-     */
-     // version 2
-     // todo : seems glimagesink plays i-frames only
-     //GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink name=vsink sync=false", NULL);
 #ifdef Q_OS_UNIX
     GstElement * pipeline = gst_parse_launch("filesrc location=/home/vq/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
 #endif
@@ -515,18 +504,6 @@ static GstElement * find_video_sink (void)
      gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
      gst_object_unref (vsink);
      GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
-
-     //--------------------------------------------------
-/*
-     GstElement * pipeline;
-#ifdef Q_OS_UNIX
-    pipeline = gst_parse_launch ("filesrc location=/home/vq/atomic.ts ! decodebin ! autovideosink", NULL);
-#endif
-#ifdef Q_OS_MAC
-    pipeline = gst_parse_launch ("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! autovideosink", NULL);
-#endif
-    gst_element_set_state(pipeline, GST_STATE_PAUSED);
-    gst_element_set_state (pipeline, GST_STATE_PLAYING);
 */
      connect(customerList, SIGNAL(currentTextChanged(QString)),
              this, SLOT(insertCustomer(QString)));
