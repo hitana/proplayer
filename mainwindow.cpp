@@ -123,6 +123,7 @@ static GstElement * find_video_sink (void)
 }
 
  MainWindow::MainWindow()
+     :pipeline(NULL)
  {
      textEdit = new QTextEdit;
      setCentralWidget(textEdit);
@@ -300,6 +301,10 @@ static GstElement * find_video_sink (void)
 
 void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
 {
+    if (pipeline != NULL) {
+        gst_element_set_state (pipeline, GST_STATE_NULL);
+    }
+
     QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! glimagesink name=vsink sync=false");
     char pipelineChars[PATH_MAX];
     sprintf (pipelineChars, "%s", pipelineString.toLocal8Bit().data());
@@ -310,7 +315,7 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     qDebug() << "pipeline = " << pipelineString;
 
     // todo : seems glimagesink plays i-frames only
-    GstElement * pipeline = gst_parse_launch(pipelineChars, NULL);
+    pipeline = gst_parse_launch(pipelineChars, NULL);
     GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
     gst_object_unref (vsink);

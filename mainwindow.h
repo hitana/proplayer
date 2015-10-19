@@ -109,6 +109,8 @@
      //libvlc_instance_t *vlcInstance;
      //libvlc_media_player_t *vlcPlayer;
 
+     GstElement * pipeline;
+
  protected:
      void dragEnterEvent(QDragEnterEvent *event);
      void dropEvent(QDropEvent *event);
