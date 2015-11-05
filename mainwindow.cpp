@@ -45,13 +45,13 @@
 #define DEFAULT_VIDEOSINK "autovideosink"
 
 #include "mainwindow.h"
-
+/*
 static void print_stream_info (GstDiscovererStreamInfo *info, gint depth);
 static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointer user_data);
 static void print_topology (GstDiscovererStreamInfo *info, gint depth);
-static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, CustomData *data);
-static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data);
-
+static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, , MainWindow * mainWindow);
+static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow);
+*/
 /* slightly convoluted way to find a working video sink that's not a bin,
  * one could use autovideosink from gst-plugins-good instead
  */
@@ -133,17 +133,16 @@ static GstElement * find_video_sink (void)
  {
      gst_init (NULL, NULL);
 
-     textEdit = new QTextEdit;
-
      createActions();
      createMenus();
      createToolBars();
      createStatusBar();
      createCentralWidget();
      createDockWindows();
-     createVlc();
+     createDiscoverer();
+     //createVlc();
 
-     setWindowTitle(tr("Dock Widgets"));
+     setWindowTitle(tr("ProPlayer Skeleton App"));
 
      setUnifiedTitleAndToolBarOnMac(true);
 
@@ -170,9 +169,9 @@ static GstElement * find_video_sink (void)
  void MainWindow::insertMediaInfo (const char *uri)
  {
      QTextDocument *document = codecInfo->document();
-     //QTextCursor cursor = document->find("Media codec information:");
-     //if (cursor.isNull()) return;
      QTextCursor cursor(document);
+
+     document->clear(); // ??
 
      cursor.beginEditBlock();
      cursor.insertText("Hello");
@@ -190,11 +189,9 @@ static GstElement * find_video_sink (void)
      GError *err = NULL;
      //gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";
 
-       /* Initialize cumstom data structure */
-       memset (&this->data, 0, sizeof (this->data));
 
 
-       cursor.insertBlock();
+       //cursor.insertBlock();
        //cursor.beginEditBlock();
        cursor.insertText("Discovering ");
        cursor.insertText(uri);
@@ -202,38 +199,28 @@ static GstElement * find_video_sink (void)
 
        qDebug() << "Discovering " << uri;
 
-       /* Instantiate the Discoverer */
-       data.discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
-       if (!data.discoverer) {
-         qDebug() << "Error creating discoverer instance: " << err->message;
-         g_clear_error (&err);
-         return;
-       }
-
-       /* Connect to the interesting signals */
-       g_signal_connect (data.discoverer, "discovered", G_CALLBACK (on_discovered_cb), &data);
-       g_signal_connect (data.discoverer, "finished", G_CALLBACK (on_finished_cb), &data);
+       // todo : write error messages with icons(warning, error, info) to Messages dock.
 
        /* Start the discoverer process (nothing to do yet) */
-       gst_discoverer_start (data.discoverer);
+       gst_discoverer_start (discoverer);
 
        /* Add a request to process asynchronously the URI passed through the command line */
-       if (!gst_discoverer_discover_uri_async (data.discoverer, uri)) {
+       if (!gst_discoverer_discover_uri_async (discoverer, uri)) {
          qDebug() << "Failed to start discovering URI " << uri;
-         g_object_unref (data.discoverer);
+         g_object_unref (discoverer);
          return;
        }
 
-       /* Create a GLib Main Loop and set it to run, so we can wait for the signals */
-       data.loop = g_main_loop_new (NULL, FALSE);
-       g_main_loop_run (data.loop);
+       /* Set GLib Main Loop to run, so we can wait for the signals */
+       //loop = g_main_loop_new (NULL, FALSE);
+       g_main_loop_run (loop);
 
        /* Stop the discoverer process */
-       gst_discoverer_stop (data.discoverer);
+       gst_discoverer_stop (discoverer);
 
        /* Free resources */
-       g_object_unref (data.discoverer);
-       g_main_loop_unref (data.loop);
+       //g_object_unref (discoverer);
+       //g_main_loop_unref (loop);
 
        // end discover media data
        // ///////////////////////////////////////////////////////////////////////////
@@ -259,48 +246,7 @@ static GstElement * find_video_sink (void)
              oldcursor.endEditBlock();
      }*/
  }
-/*
- void MainWindow::insertCustomer(const QString &customer)
- {
-     if (customer.isEmpty())
-         return;
-     QStringList customerList = customer.split(", ");
-     QTextDocument *document = textEdit->document();
-     QTextCursor cursor = document->find("NAME");
-     if (!cursor.isNull()) {
-         cursor.beginEditBlock();
-         cursor.insertText(customerList.at(0));
-         QTextCursor oldcursor = cursor;
-         cursor = document->find("ADDRESS");
-         if (!cursor.isNull()) {
-             for (int i = 1; i < customerList.size(); ++i) {
-                 cursor.insertBlock();
-                 cursor.insertText(customerList.at(i));
-             }
-             cursor.endEditBlock();
-         }
-         else
-             oldcursor.endEditBlock();
-     }
- }
 
- void MainWindow::addParagraph(const QString &paragraph)
- {
-     if (paragraph.isEmpty())
-         return;
-     QTextDocument *document = textEdit->document();
-     QTextCursor cursor = document->find(tr("Yours sincerely,"));
-     if (cursor.isNull())
-         return;
-     cursor.beginEditBlock();
-     cursor.movePosition(QTextCursor::PreviousBlock, QTextCursor::MoveAnchor, 2);
-     cursor.insertBlock();
-     cursor.insertText(paragraph);
-     cursor.insertBlock();
-     cursor.endEditBlock();
-
- }
-*/
  void MainWindow::onSelectPlaylist(const QString &playlistItem)
  {
      qDebug() << "Selected " << playlistItem;
@@ -512,7 +458,7 @@ static void print_topology (GstDiscovererStreamInfo *info, gint depth)
 }
 /* This function is called every time the discoverer has information regarding
  * one of the URIs we provided.*/
-static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, CustomData *data)
+static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, MainWindow * mainWindow)
 {
   GstDiscovererResult result;
   const gchar *uri;
@@ -585,11 +531,12 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
 
 /* This function is called when the discoverer has finished examining
  * all the URIs we provided.*/
-static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data)
+static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
 {
+    // todo : send message to Message dock and get rid or console
   qDebug() << "Finished discovering\n";
 
-  g_main_loop_quit (data->loop);
+  g_main_loop_quit (mainWindow->loop);
 }
 
  void MainWindow::about()
@@ -661,6 +608,24 @@ void MainWindow::createCentralWidget()
     return;
 }
 
+void MainWindow::createDiscoverer()
+{
+    GError * err = NULL;
+    discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
+    if (!discoverer) {
+      qDebug() << "Error creating discoverer instance: " << err->message;
+      g_clear_error (&err);
+      return;
+    }
+
+    //g_signal_connect (discoverer, "discovered", G_CALLBACK (on_discovered_cb), &discoverer);
+    //g_signal_connect (discoverer, "finished", G_CALLBACK (on_finished_cb), &discoverer);
+    g_signal_connect (discoverer, "discovered", G_CALLBACK (on_discovered_cb), this);
+    g_signal_connect (discoverer, "finished", G_CALLBACK (on_finished_cb), this);
+
+    loop = g_main_loop_new (NULL, FALSE);
+}
+
  void MainWindow::createDockWindows()
  {
      QDockWidget *dock;
@@ -706,7 +671,11 @@ void MainWindow::createCentralWidget()
      //}
  }
 
- MainWindow::~MainWindow() {
+ MainWindow::~MainWindow()
+ {
+     g_object_unref (discoverer);
+     g_main_loop_unref (loop);
+
      /* Release libVLC instance on quit */
      //if (vlcInstance) {
      //    libvlc_release(vlcInstance);

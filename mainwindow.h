@@ -58,11 +58,6 @@
  class QMenu;
  class QTextEdit;
 
- typedef struct _CustomData {
-    GstDiscoverer *discoverer;
-    GMainLoop *loop;
- } CustomData;
-
  class MainWindow : public QMainWindow
  {
      Q_OBJECT
@@ -70,6 +65,8 @@
  public:
      MainWindow();
      ~MainWindow();
+
+     GMainLoop     * loop;  // todo : remove from public
 
  private slots:
      void about();
@@ -83,18 +80,16 @@
      void createStatusBar();
      void createDockWindows();
      void createCentralWidget();
+     void createDiscoverer();
      void createVlc();
 
-     CustomData data;
      void insertMediaInfo (const char * uri);
 
-     QTextEdit *textEdit;
-
-     QListWidget *playList;
-     QTextEdit * codecInfo;
-     QListWidget * messageList;
-
-     GLWidget * glWidget;
+     QListWidget   * playList;
+     QTextEdit     * codecInfo;
+     QListWidget   * messageList;
+     GLWidget      * glWidget;
+     GstDiscoverer * discoverer;
 
      QMenu *fileMenu;
      QMenu *editMenu;
