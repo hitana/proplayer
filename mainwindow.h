@@ -72,11 +72,7 @@
      ~MainWindow();
 
  private slots:
-     void save();
-     void print();
-     void undo();
      void about();
-
      void onSelectPlaylist(const QString &playlistItem);
      void onDoubleClick(const QModelIndex &modelIndex);
 
@@ -106,9 +102,6 @@
      QMenu *helpMenu;
      QToolBar *fileToolBar;
      QToolBar *editToolBar;
-     QAction *saveAct;
-     QAction *printAct;
-     QAction *undoAct;
      QAction *aboutAct;
      QAction *aboutQtAct;
      QAction *quitAct;

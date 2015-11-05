@@ -167,53 +167,6 @@ static GstElement * find_video_sink (void)
      }
  }
 
- void MainWindow::print()
- {
- #ifndef QT_NO_PRINTDIALOG
-     QTextDocument *document = textEdit->document();
-     QPrinter printer;
-
-     QPrintDialog *dlg = new QPrintDialog(&printer, this);
-     if (dlg->exec() != QDialog::Accepted)
-         return;
-
-     document->print(&printer);
-
-     statusBar()->showMessage(tr("Ready"), 2000);
- #endif
- }
-
- void MainWindow::save()
- {
-     QString fileName = QFileDialog::getSaveFileName(this,
-                         tr("Choose a file name"), ".",
-                         tr("HTML (*.html *.htm)"));
-     if (fileName.isEmpty())
-         return;
-     QFile file(fileName);
-     if (!file.open(QFile::WriteOnly | QFile::Text)) {
-         QMessageBox::warning(this, tr("Dock Widgets"),
-                              tr("Cannot write file %1:\n%2.")
-                              .arg(fileName)
-                              .arg(file.errorString()));
-         return;
-     }
-
-     QTextStream out(&file);
-     QApplication::setOverrideCursor(Qt::WaitCursor);
-     out << textEdit->toHtml();
-     QApplication::restoreOverrideCursor();
-
-     statusBar()->showMessage(tr("Saved '%1'").arg(fileName), 2000);
- }
-
- void MainWindow::undo()
- {
-     QTextDocument *document = textEdit->document();
-     document->undo();
- }
-
-
  void MainWindow::insertMediaInfo (const char *uri)
  {
      QTextDocument *document = codecInfo->document();
@@ -650,21 +603,6 @@ static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data)
 
  void MainWindow::createActions()
  {
-     saveAct = new QAction(QIcon(":/images/save.png"), tr("&Save..."), this);
-     saveAct->setShortcuts(QKeySequence::Save);
-     saveAct->setStatusTip(tr("Save the current form letter"));
-     connect(saveAct, SIGNAL(triggered()), this, SLOT(save()));
-
-     printAct = new QAction(QIcon(":/images/print.png"), tr("&Print..."), this);
-     printAct->setShortcuts(QKeySequence::Print);
-     printAct->setStatusTip(tr("Print the current form letter"));
-     connect(printAct, SIGNAL(triggered()), this, SLOT(print()));
-
-     undoAct = new QAction(QIcon(":/images/undo.png"), tr("&Undo"), this);
-     undoAct->setShortcuts(QKeySequence::Undo);
-     undoAct->setStatusTip(tr("Undo the last editing action"));
-     connect(undoAct, SIGNAL(triggered()), this, SLOT(undo()));
-
      quitAct = new QAction(tr("&Quit"), this);
      quitAct->setShortcuts(QKeySequence::Quit);
      quitAct->setStatusTip(tr("Quit the application"));
@@ -682,13 +620,7 @@ static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data)
  void MainWindow::createMenus()
  {
      fileMenu = menuBar()->addMenu(tr("&File"));
-     fileMenu->addAction(saveAct);
-     fileMenu->addAction(printAct);
-     fileMenu->addSeparator();
      fileMenu->addAction(quitAct);
-
-     editMenu = menuBar()->addMenu(tr("&Edit"));
-     editMenu->addAction(undoAct);
 
      viewMenu = menuBar()->addMenu(tr("&View"));
 
@@ -701,12 +633,13 @@ static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data)
 
  void MainWindow::createToolBars()
  {
+     // todo : fill toolbars with useful actions
      fileToolBar = addToolBar(tr("File"));
-     fileToolBar->addAction(saveAct);
-     fileToolBar->addAction(printAct);
+     //fileToolBar->addAction(saveAct);
+     //fileToolBar->addAction(printAct);
 
      editToolBar = addToolBar(tr("Edit"));
-     editToolBar->addAction(undoAct);
+     //editToolBar->addAction(undoAct);
  }
 
  void MainWindow::createStatusBar()
