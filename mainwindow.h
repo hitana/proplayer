@@ -72,7 +72,6 @@
      ~MainWindow();
 
  private slots:
-     void newLetter();
      void save();
      void print();
      void undo();
@@ -107,7 +106,6 @@
      QMenu *helpMenu;
      QToolBar *fileToolBar;
      QToolBar *editToolBar;
-     QAction *newLetterAct;
      QAction *saveAct;
      QAction *printAct;
      QAction *undoAct;
