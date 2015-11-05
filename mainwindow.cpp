@@ -215,7 +215,6 @@ static GstElement * find_video_sink (void)
        //loop = g_main_loop_new (NULL, FALSE);
        g_main_loop_run (loop);
 
-       /* Stop the discoverer process */
        gst_discoverer_stop (discoverer);
 
        /* Free resources */
@@ -258,7 +257,7 @@ static GstElement * find_video_sink (void)
 
 void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
 {
-#if 0
+#if 1
     // working ok
     if (pipeline != NULL) {
         gst_element_set_state (pipeline, GST_STATE_NULL);
@@ -291,7 +290,7 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     //gst_object_unref (pipeline);
 
 #endif
-#if 1
+#if 0
 
     // todo : lego pipeline by hand
     GstElement *src, *sink, *bin;
