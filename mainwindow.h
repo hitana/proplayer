@@ -51,10 +51,17 @@
  //#include <vlc/vlc.h>
 #include "glwidget.h"
 
+#include <gst/pbutils/pbutils.h>
+
  class QAction;
  class QListWidget;
  class QMenu;
  class QTextEdit;
+
+ typedef struct _CustomData {
+    GstDiscoverer *discoverer;
+    GMainLoop *loop;
+ } CustomData;
 
  class MainWindow : public QMainWindow
  {
@@ -70,8 +77,6 @@
      void print();
      void undo();
      void about();
-     void insertCustomer(const QString &customer);
-     void addParagraph(const QString &paragraph);
 
      void onSelectPlaylist(const QString &playlistItem);
      void onDoubleClick(const QModelIndex &modelIndex);
@@ -82,14 +87,18 @@
      void createToolBars();
      void createStatusBar();
      void createDockWindows();
+     void createCentralWidget();
      void createVlc();
 
+     CustomData data;
+     void insertMediaInfo (const char * uri);
+
      QTextEdit *textEdit;
-     QListWidget *customerList;
-     QListWidget *paragraphsList;
 
      QListWidget *playList;
-     QLabel * label;
+     QTextEdit * codecInfo;
+     QListWidget * messageList;
+
      GLWidget * glWidget;
 
      QMenu *fileMenu;

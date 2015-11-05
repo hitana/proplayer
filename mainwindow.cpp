@@ -46,6 +46,12 @@
 
 #include "mainwindow.h"
 
+static void print_stream_info (GstDiscovererStreamInfo *info, gint depth);
+static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointer user_data);
+static void print_topology (GstDiscovererStreamInfo *info, gint depth);
+static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, CustomData *data);
+static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data);
+
 /* slightly convoluted way to find a working video sink that's not a bin,
  * one could use autovideosink from gst-plugins-good instead
  */
@@ -125,19 +131,20 @@ static GstElement * find_video_sink (void)
  MainWindow::MainWindow()
      :pipeline(NULL)
  {
+     gst_init (NULL, NULL);
+
      textEdit = new QTextEdit;
-     setCentralWidget(textEdit);
 
      createActions();
      createMenus();
      createToolBars();
      createStatusBar();
+     createCentralWidget();
      createDockWindows();
      createVlc();
 
      setWindowTitle(tr("Dock Widgets"));
 
-     newLetter();
      setUnifiedTitleAndToolBarOnMac(true);
 
      setAcceptDrops(true);
@@ -204,6 +211,10 @@ static GstElement * find_video_sink (void)
      cursor.insertText("The Boss", textFormat);
      cursor.insertBlock();
      cursor.insertText("ADDRESS", italicFormat);
+
+     cursor.insertText("Media codec information:", textFormat);
+     cursor.insertBlock();
+     cursor.insertText("End media block.", textFormat);
  }
 
  void MainWindow::print()
@@ -252,6 +263,100 @@ static GstElement * find_video_sink (void)
      document->undo();
  }
 
+
+ void MainWindow::insertMediaInfo (const char *uri)
+ {
+     QTextDocument *document = codecInfo->document();
+     //QTextCursor cursor = document->find("Media codec information:");
+     //if (cursor.isNull()) return;
+     QTextCursor cursor(document);
+
+     cursor.beginEditBlock();
+     cursor.insertText("Hello");
+     cursor.endEditBlock();
+
+   /*
+     cursor.beginEditBlock();
+     //cursor.insertText();
+     cursor.insertBlock();
+     cursor.insertText(infoList.at(i));
+     cursor.endEditBlock();
+ */
+
+     QString mediadata;
+     GError *err = NULL;
+     //gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";
+
+       /* Initialize cumstom data structure */
+       memset (&this->data, 0, sizeof (this->data));
+
+
+       cursor.insertBlock();
+       //cursor.beginEditBlock();
+       cursor.insertText("Discovering ");
+       cursor.insertText(uri);
+       //cursor.endEditBlock();
+
+       qDebug() << "Discovering " << uri;
+
+       /* Instantiate the Discoverer */
+       data.discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
+       if (!data.discoverer) {
+         qDebug() << "Error creating discoverer instance: " << err->message;
+         g_clear_error (&err);
+         return;
+       }
+
+       /* Connect to the interesting signals */
+       g_signal_connect (data.discoverer, "discovered", G_CALLBACK (on_discovered_cb), &data);
+       g_signal_connect (data.discoverer, "finished", G_CALLBACK (on_finished_cb), &data);
+
+       /* Start the discoverer process (nothing to do yet) */
+       gst_discoverer_start (data.discoverer);
+
+       /* Add a request to process asynchronously the URI passed through the command line */
+       if (!gst_discoverer_discover_uri_async (data.discoverer, uri)) {
+         qDebug() << "Failed to start discovering URI " << uri;
+         g_object_unref (data.discoverer);
+         return;
+       }
+
+       /* Create a GLib Main Loop and set it to run, so we can wait for the signals */
+       data.loop = g_main_loop_new (NULL, FALSE);
+       g_main_loop_run (data.loop);
+
+       /* Stop the discoverer process */
+       gst_discoverer_stop (data.discoverer);
+
+       /* Free resources */
+       g_object_unref (data.discoverer);
+       g_main_loop_unref (data.loop);
+
+       // end discover media data
+       // ///////////////////////////////////////////////////////////////////////////
+
+     // todo : make a QString with all mediadata
+/*
+     QStringList infoList = info.split(", ");
+     QTextDocument *document = textEdit->document();
+     QTextCursor cursor = document->find("NAME");
+     if (!cursor.isNull()) {
+         cursor.beginEditBlock();
+         cursor.insertText(infoList.at(0));
+         QTextCursor oldcursor = cursor;
+         cursor = document->find("ADDRESS");
+         if (!cursor.isNull()) {
+             for (int i = 1; i < infoList.size(); ++i) {
+                 cursor.insertBlock();
+                 cursor.insertText(infoList.at(i));
+             }
+             cursor.endEditBlock();
+         }
+         else
+             oldcursor.endEditBlock();
+     }*/
+ }
+/*
  void MainWindow::insertCustomer(const QString &customer)
  {
      if (customer.isEmpty())
@@ -292,20 +397,26 @@ static GstElement * find_video_sink (void)
      cursor.endEditBlock();
 
  }
-
+*/
  void MainWindow::onSelectPlaylist(const QString &playlistItem)
  {
      qDebug() << "Selected " << playlistItem;
-     return;
+
+     char path[PATH_MAX];
+     sprintf (path, "%s", playList->currentItem()->text().toLocal8Bit().data());
+     insertMediaInfo(path);
  }
 
 void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
 {
+#if 0
+    // working ok
     if (pipeline != NULL) {
         gst_element_set_state (pipeline, GST_STATE_NULL);
     }
 
     QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! glimagesink name=vsink sync=false");
+    //QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! autovideosink name=vsink sync=false"); // plays in separate window
     char pipelineChars[PATH_MAX];
     sprintf (pipelineChars, "%s", pipelineString.toLocal8Bit().data());
     //sprintf (pipelineChars, "%s", pipelineString.toLatin1().data());
@@ -321,6 +432,79 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     gst_object_unref (vsink);
     GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
+    GstBus * bus = gst_element_get_bus (pipeline);
+    //GstMessage * msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, (GstMessageType)(GST_MESSAGE_ERROR | GST_MESSAGE_EOS)); // blocks whole app
+
+    // todo : clear somewhere
+    // if (msg != NULL) gst_message_unref (msg);
+    gst_object_unref (bus);
+    //gst_element_set_state (pipeline, GST_STATE_NULL);
+    //gst_object_unref (pipeline);
+
+#endif
+#if 1
+
+    // todo : lego pipeline by hand
+    GstElement *src, *sink, *bin;
+    GstBus * bus;
+    GstMessage * msg;
+    GstStateChangeReturn ret;
+
+    if (pipeline != NULL) {
+        gst_element_set_state (pipeline, GST_STATE_NULL);
+        gst_object_unref (pipeline);    // todo : test it
+    }
+
+    //src = gst_element_factory_make("filesrc", "src");
+    //sink = gst_element_factory_make("glimagesink", "sink");
+    src = gst_element_factory_make("videotestsrc", "src");
+    //sink = gst_element_factory_make("autovideosink", "sink");
+    sink = gst_element_factory_make("glimagesink", "sink");
+    //bin = gst_element_factory_make("decodebin", "bin");
+    bin = gst_element_factory_make("videoconvert", "bin");
+    pipeline = gst_pipeline_new("simple_pipeline");
+
+    if (!src || !sink || !bin || !pipeline){
+        qDebug() << "Not all elements could be created.";
+        return;
+    }
+    //gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
+    gst_bin_add_many (GST_BIN (pipeline), src, sink, bin, NULL);
+    if (gst_element_link_many(src, bin, sink) != TRUE) {
+    //if (gst_element_link(src, sink) != TRUE) {
+        qDebug() << "Elements could not be linked.";
+        gst_object_unref (pipeline);    // ??
+        return;
+    }
+    //g_object_set(src, "location", playList->currentItem()->text().toLocal8Bit().data(), NULL);
+    g_object_set(src, "pattern", 0, NULL);
+
+    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (sink), (guintptr)glWidget->getWindowId());
+    ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        qDebug() << "Unable to set the pipeline to the playing state.";
+        gst_object_unref (pipeline);
+        return;
+    }
+
+    /* Wait until error or EOS */
+    bus = gst_element_get_bus (pipeline);
+    //msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+
+    // todo : not here!
+    // Free resources
+    //gst_message_unref (msg);
+    //gst_object_unref (bus);
+    //gst_element_set_state (pipeline, GST_STATE_NULL);
+    //gst_object_unref (pipeline);
+
+
+#endif
+
+
+    // todo : get a bus and set some callbacks to gather media metadata
+    // then show metadata somewhere on dock
 
      /* Create a new Media */
      //libvlc_media_t *vlcMedia = libvlc_media_new_path(vlcInstance, playList->currentItem()->text().toStdString().c_str());
@@ -346,6 +530,164 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
      /* And start playback */
      //libvlc_media_player_play (vlcPlayer);
  }
+
+/* Print a tag in a human-readable format (name: value) */
+static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointer user_data)
+{
+  GValue val = { 0, };
+  gchar *str;
+  gint depth = GPOINTER_TO_INT (user_data);
+
+  gst_tag_list_copy_value (&val, tags, tag);
+
+  if (G_VALUE_HOLDS_STRING (&val))
+    str = g_value_dup_string (&val);
+  else
+    str = gst_value_serialize (&val);
+
+  qDebug() << gst_tag_get_nick (tag) << " " << str;
+  g_free (str);
+
+  g_value_unset (&val);
+}
+
+static void print_stream_info (GstDiscovererStreamInfo *info, gint depth)
+{
+    gchar *desc = NULL;
+    GstCaps *caps;
+    const GstTagList *tags;
+
+    caps = gst_discoverer_stream_info_get_caps (info);
+
+    if (caps) {
+       if (gst_caps_is_fixed (caps))
+            desc = gst_pb_utils_get_codec_description (caps);
+        else
+            desc = gst_caps_to_string (caps);
+        gst_caps_unref (caps);
+    }
+
+    qDebug() << gst_discoverer_stream_info_get_stream_type_nick (info) << ": " << (desc ? desc : "") << "\n";
+
+    if (desc) {
+        g_free (desc);
+        desc = NULL;
+    }
+
+    tags = gst_discoverer_stream_info_get_tags (info);
+    if (tags) {
+        qDebug() << "Tags:\n";
+        gst_tag_list_foreach (tags, print_tag_foreach, GINT_TO_POINTER (depth + 2));
+    }
+}
+
+
+/* Print information regarding a stream and its substreams, if any */
+static void print_topology (GstDiscovererStreamInfo *info, gint depth)
+{
+  GstDiscovererStreamInfo *next;
+
+  if (!info)
+    return;
+
+  print_stream_info (info, depth);
+
+  next = gst_discoverer_stream_info_get_next (info);
+  if (next) {
+    print_topology (next, depth + 1);
+    gst_discoverer_stream_info_unref (next);
+  } else if (GST_IS_DISCOVERER_CONTAINER_INFO (info)) {
+    GList *tmp, *streams;
+
+    streams = gst_discoverer_container_info_get_streams (GST_DISCOVERER_CONTAINER_INFO (info));
+    for (tmp = streams; tmp; tmp = tmp->next) {
+      GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
+      print_topology (tmpinf, depth + 1);
+    }
+    gst_discoverer_stream_info_list_free (streams);
+  }
+}
+/* This function is called every time the discoverer has information regarding
+ * one of the URIs we provided.*/
+static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, CustomData *data)
+{
+  GstDiscovererResult result;
+  const gchar *uri;
+  const GstTagList *tags;
+  GstDiscovererStreamInfo *sinfo;
+
+  uri = gst_discoverer_info_get_uri (info);
+  result = gst_discoverer_info_get_result (info);
+  switch (result) {
+    case GST_DISCOVERER_URI_INVALID:
+      qDebug() << "Invalid URI '%s'\n" << uri;
+      break;
+    case GST_DISCOVERER_ERROR:
+      qDebug() << "Discoverer error: %s\n" << err->message;
+      break;
+    case GST_DISCOVERER_TIMEOUT:
+      qDebug() << "Timeout\n";
+      break;
+    case GST_DISCOVERER_BUSY:
+      qDebug() << "Busy\n";
+      break;
+    case GST_DISCOVERER_MISSING_PLUGINS:{
+      const GstStructure *s;
+      gchar *str;
+
+      s = gst_discoverer_info_get_misc (info);
+      str = gst_structure_to_string (s);
+
+      qDebug() << "Missing plugins: %s\n" << str;
+      g_free (str);
+      break;
+    }
+    case GST_DISCOVERER_OK:
+      qDebug() << "Discovered '%s'\n" << uri;
+      break;
+  }
+
+  if (result != GST_DISCOVERER_OK) {
+    qDebug() << "This URI cannot be played\n";
+    return;
+  }
+
+  /* If we got no error, show the retrieved information */
+
+  //qDebug() << "\nDuration: " << GST_TIME_FORMAT << "\n" << GST_TIME_ARGS (gst_discoverer_info_get_duration (info));
+  qDebug() << "\nDuration: " << gst_discoverer_info_get_duration (info);
+
+  tags = gst_discoverer_info_get_tags (info);
+  if (tags) {
+    qDebug() << "Tags:\n";
+    gst_tag_list_foreach (tags, print_tag_foreach, GINT_TO_POINTER (1));
+  }
+
+  qDebug() << "Seekable:" << (gst_discoverer_info_get_seekable (info) ? "yes" : "no");
+
+  qDebug() << "\n";
+
+  sinfo = gst_discoverer_info_get_stream_info (info);
+  if (!sinfo)
+    return;
+
+  qDebug() << "Stream information:\n";
+
+  print_topology (sinfo, 1);
+
+  gst_discoverer_stream_info_unref (sinfo);
+
+  qDebug() << "\n";
+}
+
+/* This function is called when the discoverer has finished examining
+ * all the URIs we provided.*/
+static void on_finished_cb (GstDiscoverer *discoverer, CustomData *data)
+{
+  qDebug() << "Finished discovering\n";
+
+  g_main_loop_quit (data->loop);
+}
 
  void MainWindow::about()
  {
@@ -430,46 +772,23 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
      statusBar()->showMessage(tr("Ready"));
  }
 
+void MainWindow::createCentralWidget()
+{
+    QGLFormat glFormat;
+    glFormat.setVersion (2, 1);
+    glFormat.setProfile (QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
+    glFormat.setSampleBuffers (true);
+
+    glWidget = new GLWidget(glFormat, this);
+
+    setCentralWidget(glWidget);
+
+    return;
+}
+
  void MainWindow::createDockWindows()
  {
-     QDockWidget *dock = new QDockWidget(tr("Customers"), this);
-     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-     customerList = new QListWidget(dock);
-     customerList->addItems(QStringList()
-             << "John Doe, Harmony Enterprises, 12 Lakeside, Ambleton"
-             << "Jane Doe, Memorabilia, 23 Watersedge, Beaton"
-             << "Tammy Shea, Tiblanka, 38 Sea Views, Carlton"
-             << "Tim Sheen, Caraba Gifts, 48 Ocean Way, Deal"
-             << "Sol Harvey, Chicos Coffee, 53 New Springs, Eccleston"
-             << "Sally Hobart, Tiroli Tea, 67 Long River, Fedula");
-     dock->setWidget(customerList);
-     addDockWidget(Qt::RightDockWidgetArea, dock);
-     viewMenu->addAction(dock->toggleViewAction());
-
-     dock = new QDockWidget(tr("Paragraphs"), this);
-     paragraphsList = new QListWidget(dock);
-     paragraphsList->addItems(QStringList()
-             << "Thank you for your payment which we have received today."
-             << "Your order has been dispatched and should be with you "
-                "within 28 days."
-             << "We have dispatched those items that were in stock. The "
-                "rest of your order will be dispatched once all the "
-                "remaining items have arrived at our warehouse. No "
-                "additional shipping charges will be made."
-             << "You made a small overpayment (less than $5) which we "
-                "will keep on account for you, or return at your request."
-             << "You made a small underpayment (less than $1), but we have "
-                "sent your order anyway. We'll add this underpayment to "
-                "your next bill."
-             << "Unfortunately you did not send enough money. Please remit "
-                "an additional $. Your order will be dispatched as soon as "
-                "the complete amount has been received."
-             << "You made an overpayment (more than $5). Do you wish to "
-                "buy more items, or should we return the excess to you?");
-     dock->setWidget(paragraphsList);
-     addDockWidget(Qt::LeftDockWidgetArea, dock);
-     viewMenu->addAction(dock->toggleViewAction());
-
+     QDockWidget *dock;
      dock = new QDockWidget (tr("Playlist"), this);
      playList = new QListWidget(dock);
 
@@ -477,43 +796,23 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
-     dock = new QDockWidget (tr("Video"), this);
-     label = new QLabel();
-     dock->setWidget(label);
+     dock = new QDockWidget (tr("Codec info"), this);
+     codecInfo = new QTextEdit;
+     dock->setWidget(codecInfo);
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
-
-     //--------------------------------------------------
-     QGLFormat glFormat;
-     glFormat.setVersion (2, 1);
-     glFormat.setProfile (QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
-     glFormat.setSampleBuffers (true);
-
-     glWidget = new GLWidget(glFormat, this);
-     dock = new QDockWidget (tr ("GlWidget"), this);
-     dock->setWidget(glWidget);
-     addDockWidget(Qt::RightDockWidgetArea, dock);
-     viewMenu->addAction(dock->toggleViewAction());
-
-     //---------------------------------------------------
-     gst_init (NULL, NULL);
 /*
-#ifdef Q_OS_UNIX
-    GstElement * pipeline = gst_parse_launch("filesrc location=/home/vq/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
-#endif
-#ifdef Q_OS_MAC
-    GstElement * pipeline = gst_parse_launch("filesrc location=/Users/qa/Desktop/media/atomic.ts ! decodebin ! glimagesink name=vsink sync=false", NULL);
-#endif
-
-     GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
-     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
-     gst_object_unref (vsink);
-     GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+     QTextDocument *document = codecInfo->document();
+     QTextCursor cursor(document);
+     cursor.beginEditBlock();
+     cursor.insertText("Select file in playlist to get it's codec information");
+     cursor.endEditBlock();
 */
-     connect(customerList, SIGNAL(currentTextChanged(QString)),
-             this, SLOT(insertCustomer(QString)));
-     connect(paragraphsList, SIGNAL(currentTextChanged(QString)),
-             this, SLOT(addParagraph(QString)));
+     dock = new QDockWidget (tr("Messages"), this);
+     messageList = new QListWidget(dock);
+     dock->setWidget(messageList);
+     addDockWidget(Qt::BottomDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
 
      connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
