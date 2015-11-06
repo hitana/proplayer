@@ -58,6 +58,15 @@
  class QMenu;
  class QTextEdit;
 
+ enum MessageType {
+     MT_NONE = 0,
+     MT_INFO,
+     MT_WARNING,
+     MT_ERROR,
+     MT_DEBUG,
+     MT_COUNT
+ };
+
  class MainWindow : public QMainWindow
  {
      Q_OBJECT
@@ -68,6 +77,8 @@
 
      GMainLoop     * loop;          // todo : remove from public
      QListWidget   * messageList;   // todo : remove from public
+
+     void addColoredLog (const QString &line, MessageType type);
 
  private slots:
      void about();

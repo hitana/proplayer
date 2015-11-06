@@ -149,6 +149,32 @@ static GstElement * find_video_sink (void)
      setAcceptDrops(true);
  }
 
+ void MainWindow::addColoredLog(const QString &line, MessageType type)
+ {
+     QColor color = Qt::white;
+     QListWidgetItem * listItem = new QListWidgetItem(line);
+     switch (type){
+     case MT_INFO:
+         color = QColor(0, 255, 0, 30);   // light green
+         break;
+     case MT_WARNING:
+         color = QColor(255, 255, 0, 30); // yellow
+         break;
+     case MT_ERROR:
+         color = QColor(255, 0, 0, 30);   // red
+         break;
+     case MT_DEBUG:
+         color = QColor(0, 0, 255, 30);   // blue
+         break;
+     default:
+         break;
+     }
+     //listItem->setForeground(Qt::red); // sets red text
+     listItem->setBackground (color);
+     messageList->addItem (listItem);
+     messageList->show();
+ }
+
  void MainWindow::dragEnterEvent(QDragEnterEvent * e)
  {
      if (e->mimeData()->hasUrls()) {
@@ -189,28 +215,24 @@ static GstElement * find_video_sink (void)
      GError *err = NULL;
      gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";
 
-
-
        //cursor.insertBlock();
        //cursor.beginEditBlock();
-       cursor.insertText("Discovering ");
        cursor.insertText(uri);
        //cursor.endEditBlock();
 
-       messageList->addItem(QString::fromLocal8Bit("I: Discovering ") + QString::fromLocal8Bit(uri));
+       addColoredLog("I: Discovering " + QString::fromLocal8Bit(uri) + " ...", MT_INFO);
 
        /* Start the discoverer process (nothing to do yet) */
        gst_discoverer_start (discoverer);
 
        /* Add a request to process asynchronously the URI passed through the command line */
        if (!gst_discoverer_discover_uri_async (discoverer, uri)) {
-           messageList->addItem(QString::fromLocal8Bit("E: Failed to start discovering URI ") + QString::fromLocal8Bit(uri));
+           addColoredLog("E: Failed to start discovering URI " + QString::fromLocal8Bit(uri), MT_ERROR);
            g_object_unref (discoverer);
            return;
        }
 
        /* Set GLib Main Loop to run, so we can wait for the signals */
-       //loop = g_main_loop_new (NULL, FALSE);
        g_main_loop_run (loop);
 
        gst_discoverer_stop (discoverer);
@@ -266,8 +288,9 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     //sprintf (pipelineChars, "%s", pipelineString.toLatin1().data());
     //sprintf (pipelineChars, "%s", pipelineString.toStdString().c_str());
 
-    messageList->addItem(QString::fromLocal8Bit("I: Playing ") + playList->currentItem()->text());
-    messageList->addItem(QString::fromLocal8Bit("I: Pipeline = ") + pipelineString);
+    addColoredLog("", MT_NONE);
+    addColoredLog("I: Playing " + playList->currentItem()->text(), MT_DEBUG);
+    addColoredLog("I: Pipeline = " + pipelineString, MT_DEBUG);
     qDebug() << "pipeline = " << pipelineString;
 
     // todo : seems glimagesink plays i-frames only
@@ -310,14 +333,14 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     pipeline = gst_pipeline_new("simple_pipeline");
 
     if (!src || !sink || !bin || !pipeline){
-        messageList->addItem(QString::fromLocal8Bit("E: Not all elements could be created."));
+        addColoredLog("E: Not all elements could be created.", MT_ERROR);
         return;
     }
     //gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
     gst_bin_add_many (GST_BIN (pipeline), src, sink, bin, NULL);
     if (gst_element_link_many(src, bin, sink) != TRUE) {
     //if (gst_element_link(src, sink) != TRUE) {
-        messageList->addItem(QString::fromLocal8Bit("E: Elements could not be linked."));
+        addColoredLog("E: Elements could not be linked.", MT_ERROR);
         gst_object_unref (pipeline);    // ??
         return;
     }
@@ -328,7 +351,7 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        messageList->addItem(QString::fromLocal8Bit("E: Unable to set the pipeline to the playing state."));
+        addColoredLog("E: Unable to set the pipeline to the playing state.", MT_ERROR);
         gst_object_unref (pipeline);
         return;
     }
@@ -392,12 +415,9 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
     str = gst_value_serialize (&val);
 
   qDebug() << gst_tag_get_nick (tag) << " " << str;
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I:      ") +
-                                   QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
-                                   QString::fromLocal8Bit(": ") +
-                                   QString::fromLocal8Bit(str));
-
-g_free (str);
+  mainWindow->addColoredLog("I:      " + QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
+                            ": " + QString::fromLocal8Bit(str), MT_INFO);
+  g_free (str);
 
   g_value_unset (&val);
 }
@@ -420,10 +440,8 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
     }
 
     qDebug() << gst_discoverer_stream_info_get_stream_type_nick (info) << ": " << (desc ? desc : "") << "\n";
-    mainWindow->messageList->addItem(QString::fromLocal8Bit("I: ") +
-                         QString::fromLocal8Bit(gst_discoverer_stream_info_get_stream_type_nick (info)) +
-                         QString::fromLocal8Bit(": ") +
-                         QString::fromLocal8Bit((desc ? desc : "")));
+    mainWindow->addColoredLog("I: " + QString::fromLocal8Bit(gst_discoverer_stream_info_get_stream_type_nick (info)) +
+                              ": " + QString::fromLocal8Bit((desc ? desc : "")), MT_INFO);
 
     if (desc) {
         g_free (desc);
@@ -434,7 +452,7 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
     if (tags) {
         gst_tag_list_foreach (tags, print_tag_foreach, user_data);
         qDebug() << "\n";
-        mainWindow->messageList->addItem(QString::fromLocal8Bit(""));
+        mainWindow->addColoredLog("", MT_NONE);
     }
 }
 
@@ -477,16 +495,16 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
   result = gst_discoverer_info_get_result (info);
   switch (result) {
     case GST_DISCOVERER_URI_INVALID:
-      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Invalid URI ") + QString::fromLocal8Bit(uri));
+      mainWindow->addColoredLog("E: Invalid URI " + QString::fromLocal8Bit(uri), MT_ERROR);
       break;
     case GST_DISCOVERER_ERROR:
-      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Discoverer error: ") + QString::fromLocal8Bit(err->message));
+      mainWindow->addColoredLog("E: Discoverer error: " + QString::fromLocal8Bit(err->message), MT_ERROR);
       break;
     case GST_DISCOVERER_TIMEOUT:
-      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Timeout."));
+      mainWindow->addColoredLog("E: Timeout.", MT_WARNING);
       break;
     case GST_DISCOVERER_BUSY:
-      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Busy."));
+      mainWindow->addColoredLog("E: Busy.", MT_WARNING);
       break;
     case GST_DISCOVERER_MISSING_PLUGINS:{
       const GstStructure *s;
@@ -495,38 +513,36 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
       s = gst_discoverer_info_get_misc (info);
       str = gst_structure_to_string (s);
 
-      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Missing plugins: ") + QString::fromLocal8Bit(str));
+      mainWindow->addColoredLog("E: Missing plugins: " + QString::fromLocal8Bit(str), MT_ERROR);
       g_free (str);
       break;
     }
     case GST_DISCOVERER_OK:
-      mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Discovered ") + QString::fromLocal8Bit(uri));
+      mainWindow->addColoredLog("I: Discovered " + QString::fromLocal8Bit(uri), MT_INFO);
       break;
   }
 
   if (result != GST_DISCOVERER_OK) {
-    mainWindow->messageList->addItem(QString::fromLocal8Bit("E: This URI cannot be played "));
-    return;
+      mainWindow->addColoredLog("E: This URI cannot be played ", MT_ERROR);
+      return;
   }
 
   /* If we got no error, show the retrieved information */
 
   // todo : make readable duration
   //qDebug() << "\nDuration: " << GST_TIME_FORMAT << "\n" << GST_TIME_ARGS (gst_discoverer_info_get_duration (info));
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Duration: ") + QString::number(gst_discoverer_info_get_duration (info)));
+  mainWindow->addColoredLog("I: Duration: " + QString::number(gst_discoverer_info_get_duration (info)), MT_INFO);
 
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
       gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
       qDebug() << "\n";
-      mainWindow->messageList->addItem(QString::fromLocal8Bit(""));
+      mainWindow->addColoredLog("", MT_NONE);
   }
 
   qDebug() << "Seekable:" << (gst_discoverer_info_get_seekable (info) ? "yes" : "no");
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Seekable: ") +
-                                   QString::fromLocal8Bit(gst_discoverer_info_get_seekable (info) ? "yes" : "no") +
-                                   QString::fromLocal8Bit("\n"));
-
+  mainWindow->addColoredLog("I: Seekable: " +
+                            QString::fromLocal8Bit(gst_discoverer_info_get_seekable (info) ? "yes" : "no") + "\n", MT_INFO);
   qDebug() << "\n";
 
   sinfo = gst_discoverer_info_get_stream_info (info);
@@ -534,7 +550,7 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
     return;
 
   qDebug() << "Stream information:\n";
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Stream information:\n"));
+  mainWindow->addColoredLog("I: Stream information:\n", MT_INFO);
 
   print_topology (sinfo, (gpointer)mainWindow);
 
@@ -546,7 +562,8 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
 static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
 {
   qDebug() << "Finished discovering\n";
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Finished discovering.\n"));
+  mainWindow->addColoredLog("I: Finished discovering.", MT_INFO);
+  mainWindow->addColoredLog("", MT_NONE);
 
   g_main_loop_quit (mainWindow->loop);
 }
@@ -626,13 +643,11 @@ void MainWindow::createDiscoverer()
     discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
     if (!discoverer) {
       qDebug() << "Error creating discoverer instance: " << err->message;
-      messageList->addItem(QString::fromLocal8Bit("E: Error creating discoverer instance: ") + QString::fromLocal8Bit(err->message));
+      addColoredLog("E: Error creating discoverer instance: " + QString::fromLocal8Bit(err->message), MT_ERROR);
       g_clear_error (&err);
       return;
     }
 
-    //g_signal_connect (discoverer, "discovered", G_CALLBACK (on_discovered_cb), &discoverer);
-    //g_signal_connect (discoverer, "finished", G_CALLBACK (on_finished_cb), &discoverer);
     g_signal_connect (discoverer, "discovered", G_CALLBACK (on_discovered_cb), this);
     g_signal_connect (discoverer, "finished", G_CALLBACK (on_finished_cb), this);
 
