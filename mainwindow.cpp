@@ -166,7 +166,7 @@ static GstElement * find_video_sink (void)
      }
  }
 
- void MainWindow::insertMediaInfo (const char *uri)
+ void MainWindow::insertMediaInfo (const char *uri2)
  {
      QTextDocument *document = codecInfo->document();
      QTextCursor cursor(document);
@@ -187,7 +187,7 @@ static GstElement * find_video_sink (void)
 
      QString mediadata;
      GError *err = NULL;
-     //gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";
+     gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";
 
 
 
@@ -381,7 +381,8 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
 {
   GValue val = { 0, };
   gchar *str;
-  gint depth = GPOINTER_TO_INT (user_data);
+  //gint depth = GPOINTER_TO_INT (user_data);
+  MainWindow * mainWindow = (MainWindow*)user_data;
 
   gst_tag_list_copy_value (&val, tags, tag);
 
@@ -391,17 +392,22 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
     str = gst_value_serialize (&val);
 
   qDebug() << gst_tag_get_nick (tag) << " " << str;
-  //messageList->addItem(QString::fromLocal8Bit("I: gst_tag_get_nick (tag)") + QString::fromLocal8Bit(str));
-  g_free (str);
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I:      ") +
+                                   QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
+                                   QString::fromLocal8Bit(": ") +
+                                   QString::fromLocal8Bit(str));
+
+g_free (str);
 
   g_value_unset (&val);
 }
 
-static void print_stream_info (GstDiscovererStreamInfo *info, gint depth)
+static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data)
 {
     gchar *desc = NULL;
     GstCaps *caps;
     const GstTagList *tags;
+    MainWindow * mainWindow = (MainWindow*)user_data;
 
     caps = gst_discoverer_stream_info_get_caps (info);
 
@@ -414,11 +420,11 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gint depth)
     }
 
     qDebug() << gst_discoverer_stream_info_get_stream_type_nick (info) << ": " << (desc ? desc : "") << "\n";
-    /*messageList->addItem(QString::fromLocal8Bit("I: ") +
-                         QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
+    mainWindow->messageList->addItem(QString::fromLocal8Bit("I: ") +
+                         QString::fromLocal8Bit(gst_discoverer_stream_info_get_stream_type_nick (info)) +
                          QString::fromLocal8Bit(": ") +
-                         QString::fromLocal8Bit(str));
-*/
+                         QString::fromLocal8Bit((desc ? desc : "")));
+
     if (desc) {
         g_free (desc);
         desc = NULL;
@@ -426,26 +432,26 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gint depth)
 
     tags = gst_discoverer_stream_info_get_tags (info);
     if (tags) {
-        qDebug() << "Tags:\n";
-        //messageList->addItem(QString::fromLocal8Bit("I: Tags:"));
-        gst_tag_list_foreach (tags, print_tag_foreach, GINT_TO_POINTER (depth + 2));
+        gst_tag_list_foreach (tags, print_tag_foreach, user_data);
+        qDebug() << "\n";
+        mainWindow->messageList->addItem(QString::fromLocal8Bit(""));
     }
 }
 
 
 /* Print information regarding a stream and its substreams, if any */
-static void print_topology (GstDiscovererStreamInfo *info, gint depth)
+static void print_topology (GstDiscovererStreamInfo *info, gpointer user_data)
 {
   GstDiscovererStreamInfo *next;
 
   if (!info)
     return;
 
-  print_stream_info (info, depth);
+  print_stream_info (info, user_data);
 
   next = gst_discoverer_stream_info_get_next (info);
   if (next) {
-    print_topology (next, depth + 1);
+    print_topology (next, user_data);
     gst_discoverer_stream_info_unref (next);
   } else if (GST_IS_DISCOVERER_CONTAINER_INFO (info)) {
     GList *tmp, *streams;
@@ -453,7 +459,7 @@ static void print_topology (GstDiscovererStreamInfo *info, gint depth)
     streams = gst_discoverer_container_info_get_streams (GST_DISCOVERER_CONTAINER_INFO (info));
     for (tmp = streams; tmp; tmp = tmp->next) {
       GstDiscovererStreamInfo *tmpinf = (GstDiscovererStreamInfo *) tmp->data;
-      print_topology (tmpinf, depth + 1);
+      print_topology (tmpinf, user_data);
     }
     gst_discoverer_stream_info_list_free (streams);
   }
@@ -505,18 +511,21 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
 
   /* If we got no error, show the retrieved information */
 
+  // todo : make readable duration
   //qDebug() << "\nDuration: " << GST_TIME_FORMAT << "\n" << GST_TIME_ARGS (gst_discoverer_info_get_duration (info));
   mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Duration: ") + QString::number(gst_discoverer_info_get_duration (info)));
 
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
-    qDebug() << "Tags:\n";
-    mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Tags: "));
-    gst_tag_list_foreach (tags, print_tag_foreach, GINT_TO_POINTER (1));
+      gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
+      qDebug() << "\n";
+      mainWindow->messageList->addItem(QString::fromLocal8Bit(""));
   }
 
   qDebug() << "Seekable:" << (gst_discoverer_info_get_seekable (info) ? "yes" : "no");
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Seekable: ") + QString::fromLocal8Bit(gst_discoverer_info_get_seekable (info) ? "yes" : "no"));
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Seekable: ") +
+                                   QString::fromLocal8Bit(gst_discoverer_info_get_seekable (info) ? "yes" : "no") +
+                                   QString::fromLocal8Bit("\n"));
 
   qDebug() << "\n";
 
@@ -525,22 +534,19 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
     return;
 
   qDebug() << "Stream information:\n";
-  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Stream information: "));
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Stream information:\n"));
 
-  print_topology (sinfo, 1);
+  print_topology (sinfo, (gpointer)mainWindow);
 
   gst_discoverer_stream_info_unref (sinfo);
-
-  qDebug() << "\n";
 }
 
 /* This function is called when the discoverer has finished examining
  * all the URIs we provided.*/
 static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
 {
-    // todo : send message to Message dock and get rid or console
   qDebug() << "Finished discovering\n";
-  //messageList->addItem(QString::fromLocal8Bit("I: Finished discovering."));
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Finished discovering.\n"));
 
   g_main_loop_quit (mainWindow->loop);
 }
