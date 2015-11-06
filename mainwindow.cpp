@@ -173,6 +173,7 @@ static GstElement * find_video_sink (void)
      listItem->setBackground (color);
      messageList->addItem (listItem);
      messageList->show();
+     messageList->scrollToBottom();
  }
 
  void MainWindow::dragEnterEvent(QDragEnterEvent * e)
@@ -291,7 +292,6 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     addColoredLog("", MT_NONE);
     addColoredLog("I: Playing " + playList->currentItem()->text(), MT_DEBUG);
     addColoredLog("I: Pipeline = " + pipelineString, MT_DEBUG);
-    qDebug() << "pipeline = " << pipelineString;
 
     // todo : seems glimagesink plays i-frames only
     pipeline = gst_parse_launch(pipelineChars, NULL);
@@ -526,8 +526,22 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
   /* If we got no error, show the retrieved information */
 
   // todo : make readable duration
-  //qDebug() << "\nDuration: " << GST_TIME_FORMAT << "\n" << GST_TIME_ARGS (gst_discoverer_info_get_duration (info));
-  mainWindow->addColoredLog("I: Duration: " + QString::number(gst_discoverer_info_get_duration (info)), MT_INFO);
+  // u:%02u:%02u:%09u  GST_TIME_FORMAT
+
+#define TIME_FORMAT_MSEC(t) GST_CLOCK_TIME_IS_VALID (t) ? (guint) (((GstClockTime)(t)) % GST_SECOND) : 999999999
+#define TIME_FORMAT_SEC(t)  GST_CLOCK_TIME_IS_VALID (t) ? (guint) ((((GstClockTime)(t)) / GST_SECOND) % 60) : 99
+#define TIME_FORMAT_MIN(t)  GST_CLOCK_TIME_IS_VALID (t) ? (guint) ((((GstClockTime)(t)) / (GST_SECOND * 60)) % 60) : 99
+#define TIME_FORMAT_HOUR(t) GST_CLOCK_TIME_IS_VALID (t) ? (guint) (((GstClockTime)(t)) / (GST_SECOND * 60 * 60)) : 99
+
+  GstClockTime duration = gst_discoverer_info_get_duration (info);
+  mainWindow->addColoredLog("I: Duration: " +
+                            QString::number(TIME_FORMAT_HOUR(duration)) + ":" +
+                            QString::number(TIME_FORMAT_MIN(duration)) + ":" +
+                            QString::number(TIME_FORMAT_SEC(duration)) + ":" +
+                            QString::number(TIME_FORMAT_MSEC(duration)) + ":",
+                            MT_INFO);
+
+  qDebug("\nDuration: %u:%02u:%02u:%09u", GST_TIME_ARGS (duration));
 
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
