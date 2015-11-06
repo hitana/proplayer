@@ -404,7 +404,6 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
 {
   GValue val = { 0, };
   gchar *str;
-  //gint depth = GPOINTER_TO_INT (user_data);
   MainWindow * mainWindow = (MainWindow*)user_data;
 
   gst_tag_list_copy_value (&val, tags, tag);
@@ -414,7 +413,6 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
   else
     str = gst_value_serialize (&val);
 
-  qDebug() << gst_tag_get_nick (tag) << " " << str;
   mainWindow->addColoredLog("I:      " + QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
                             ": " + QString::fromLocal8Bit(str), MT_INFO);
   g_free (str);
@@ -439,7 +437,6 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
         gst_caps_unref (caps);
     }
 
-    qDebug() << gst_discoverer_stream_info_get_stream_type_nick (info) << ": " << (desc ? desc : "") << "\n";
     mainWindow->addColoredLog("I: " + QString::fromLocal8Bit(gst_discoverer_stream_info_get_stream_type_nick (info)) +
                               ": " + QString::fromLocal8Bit((desc ? desc : "")), MT_INFO);
 
@@ -451,7 +448,6 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
     tags = gst_discoverer_stream_info_get_tags (info);
     if (tags) {
         gst_tag_list_foreach (tags, print_tag_foreach, user_data);
-        qDebug() << "\n";
         mainWindow->addColoredLog("", MT_NONE);
     }
 }
@@ -536,20 +532,16 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
       gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
-      qDebug() << "\n";
       mainWindow->addColoredLog("", MT_NONE);
   }
 
-  qDebug() << "Seekable:" << (gst_discoverer_info_get_seekable (info) ? "yes" : "no");
   mainWindow->addColoredLog("I: Seekable: " +
                             QString::fromLocal8Bit(gst_discoverer_info_get_seekable (info) ? "yes" : "no") + "\n", MT_INFO);
-  qDebug() << "\n";
 
   sinfo = gst_discoverer_info_get_stream_info (info);
   if (!sinfo)
     return;
 
-  qDebug() << "Stream information:\n";
   mainWindow->addColoredLog("I: Stream information:\n", MT_INFO);
 
   print_topology (sinfo, (gpointer)mainWindow);
@@ -561,7 +553,6 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
  * all the URIs we provided.*/
 static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
 {
-  qDebug() << "Finished discovering\n";
   mainWindow->addColoredLog("I: Finished discovering.", MT_INFO);
   mainWindow->addColoredLog("", MT_NONE);
 
@@ -642,7 +633,6 @@ void MainWindow::createDiscoverer()
     GError * err = NULL;
     discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
     if (!discoverer) {
-      qDebug() << "Error creating discoverer instance: " << err->message;
       addColoredLog("E: Error creating discoverer instance: " + QString::fromLocal8Bit(err->message), MT_ERROR);
       g_clear_error (&err);
       return;
