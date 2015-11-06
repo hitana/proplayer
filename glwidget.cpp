@@ -226,19 +226,13 @@ Pipeline* GLWidget::createPipeline(int vidIx)
 
 void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on main video window
 {
-    return; // test
     Q_UNUSED(event);
 
-    makeCurrent();
-/*
-    glDepthFunc(GL_LESS);
-    glEnable(GL_DEPTH_TEST);
-    glEnable (GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-*/
+    //makeCurrent();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    swapBuffers();
+    return;
 
     QImage yuvImage;
     QPixmap overlayYuv;
@@ -295,10 +289,11 @@ void GLWidget::paintEvent(QPaintEvent *event)       // here we try to draw on ma
     /////////////////////////////////////////////////
 
 
-
+/*
     QPainter painter(this);
 
-    yuvImage.setColor(0, qRgb(255, 0, 0));
+    //yuvImage.setColor(0, qRgb(255, 0, 0));
+    yuvImage.setColor(0, qRgb(0, 0, 0));
 
     //painter.drawPicture(0,0,picture);
 painter.drawImage(0, 0, yuvImage);
@@ -331,7 +326,7 @@ painter.setBrush(Qt::blue);
         m_frameTime.start();
         m_frames = 0;
     }
-    ++m_frames;
+    ++m_frames;*/
 }
 
 void GLWidget::resizeGL(int wid, int ht)
