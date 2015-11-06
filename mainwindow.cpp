@@ -197,18 +197,16 @@ static GstElement * find_video_sink (void)
        cursor.insertText(uri);
        //cursor.endEditBlock();
 
-       qDebug() << "Discovering " << uri;
-
-       // todo : write error messages with icons(warning, error, info) to Messages dock.
+       messageList->addItem(QString::fromLocal8Bit("I: Discovering ") + QString::fromLocal8Bit(uri));
 
        /* Start the discoverer process (nothing to do yet) */
        gst_discoverer_start (discoverer);
 
        /* Add a request to process asynchronously the URI passed through the command line */
        if (!gst_discoverer_discover_uri_async (discoverer, uri)) {
-         qDebug() << "Failed to start discovering URI " << uri;
-         g_object_unref (discoverer);
-         return;
+           messageList->addItem(QString::fromLocal8Bit("E: Failed to start discovering URI ") + QString::fromLocal8Bit(uri));
+           g_object_unref (discoverer);
+           return;
        }
 
        /* Set GLib Main Loop to run, so we can wait for the signals */
@@ -248,8 +246,6 @@ static GstElement * find_video_sink (void)
 
  void MainWindow::onSelectPlaylist(const QString &playlistItem)
  {
-     qDebug() << "Selected " << playlistItem;
-
      char path[PATH_MAX];
      sprintf (path, "%s", playList->currentItem()->text().toLocal8Bit().data());
      insertMediaInfo(path);
@@ -270,7 +266,8 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     //sprintf (pipelineChars, "%s", pipelineString.toLatin1().data());
     //sprintf (pipelineChars, "%s", pipelineString.toStdString().c_str());
 
-    qDebug() << "Playing " << playList->currentRow() << ", " << playList->currentItem()->text();
+    messageList->addItem(QString::fromLocal8Bit("I: Playing ") + playList->currentItem()->text());
+    messageList->addItem(QString::fromLocal8Bit("I: Pipeline = ") + pipelineString);
     qDebug() << "pipeline = " << pipelineString;
 
     // todo : seems glimagesink plays i-frames only
@@ -313,14 +310,14 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     pipeline = gst_pipeline_new("simple_pipeline");
 
     if (!src || !sink || !bin || !pipeline){
-        qDebug() << "Not all elements could be created.";
+        messageList->addItem(QString::fromLocal8Bit("E: Not all elements could be created."));
         return;
     }
     //gst_bin_add_many (GST_BIN (pipeline), src, sink, NULL);
     gst_bin_add_many (GST_BIN (pipeline), src, sink, bin, NULL);
     if (gst_element_link_many(src, bin, sink) != TRUE) {
     //if (gst_element_link(src, sink) != TRUE) {
-        qDebug() << "Elements could not be linked.";
+        messageList->addItem(QString::fromLocal8Bit("E: Elements could not be linked."));
         gst_object_unref (pipeline);    // ??
         return;
     }
@@ -331,7 +328,7 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        qDebug() << "Unable to set the pipeline to the playing state.";
+        messageList->addItem(QString::fromLocal8Bit("E: Unable to set the pipeline to the playing state."));
         gst_object_unref (pipeline);
         return;
     }
@@ -394,6 +391,7 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
     str = gst_value_serialize (&val);
 
   qDebug() << gst_tag_get_nick (tag) << " " << str;
+  //messageList->addItem(QString::fromLocal8Bit("I: gst_tag_get_nick (tag)") + QString::fromLocal8Bit(str));
   g_free (str);
 
   g_value_unset (&val);
@@ -416,7 +414,11 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gint depth)
     }
 
     qDebug() << gst_discoverer_stream_info_get_stream_type_nick (info) << ": " << (desc ? desc : "") << "\n";
-
+    /*messageList->addItem(QString::fromLocal8Bit("I: ") +
+                         QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
+                         QString::fromLocal8Bit(": ") +
+                         QString::fromLocal8Bit(str));
+*/
     if (desc) {
         g_free (desc);
         desc = NULL;
@@ -425,6 +427,7 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gint depth)
     tags = gst_discoverer_stream_info_get_tags (info);
     if (tags) {
         qDebug() << "Tags:\n";
+        //messageList->addItem(QString::fromLocal8Bit("I: Tags:"));
         gst_tag_list_foreach (tags, print_tag_foreach, GINT_TO_POINTER (depth + 2));
     }
 }
@@ -468,16 +471,16 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
   result = gst_discoverer_info_get_result (info);
   switch (result) {
     case GST_DISCOVERER_URI_INVALID:
-      qDebug() << "Invalid URI '%s'\n" << uri;
+      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Invalid URI ") + QString::fromLocal8Bit(uri));
       break;
     case GST_DISCOVERER_ERROR:
-      qDebug() << "Discoverer error: %s\n" << err->message;
+      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Discoverer error: ") + QString::fromLocal8Bit(err->message));
       break;
     case GST_DISCOVERER_TIMEOUT:
-      qDebug() << "Timeout\n";
+      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Timeout."));
       break;
     case GST_DISCOVERER_BUSY:
-      qDebug() << "Busy\n";
+      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Busy."));
       break;
     case GST_DISCOVERER_MISSING_PLUGINS:{
       const GstStructure *s;
@@ -486,32 +489,34 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
       s = gst_discoverer_info_get_misc (info);
       str = gst_structure_to_string (s);
 
-      qDebug() << "Missing plugins: %s\n" << str;
+      mainWindow->messageList->addItem(QString::fromLocal8Bit("E: Missing plugins: ") + QString::fromLocal8Bit(str));
       g_free (str);
       break;
     }
     case GST_DISCOVERER_OK:
-      qDebug() << "Discovered '%s'\n" << uri;
+      mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Discovered ") + QString::fromLocal8Bit(uri));
       break;
   }
 
   if (result != GST_DISCOVERER_OK) {
-    qDebug() << "This URI cannot be played\n";
+    mainWindow->messageList->addItem(QString::fromLocal8Bit("E: This URI cannot be played "));
     return;
   }
 
   /* If we got no error, show the retrieved information */
 
   //qDebug() << "\nDuration: " << GST_TIME_FORMAT << "\n" << GST_TIME_ARGS (gst_discoverer_info_get_duration (info));
-  qDebug() << "\nDuration: " << gst_discoverer_info_get_duration (info);
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Duration: ") + QString::number(gst_discoverer_info_get_duration (info)));
 
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
     qDebug() << "Tags:\n";
+    mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Tags: "));
     gst_tag_list_foreach (tags, print_tag_foreach, GINT_TO_POINTER (1));
   }
 
   qDebug() << "Seekable:" << (gst_discoverer_info_get_seekable (info) ? "yes" : "no");
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Seekable: ") + QString::fromLocal8Bit(gst_discoverer_info_get_seekable (info) ? "yes" : "no"));
 
   qDebug() << "\n";
 
@@ -520,6 +525,7 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
     return;
 
   qDebug() << "Stream information:\n";
+  mainWindow->messageList->addItem(QString::fromLocal8Bit("I: Stream information: "));
 
   print_topology (sinfo, 1);
 
@@ -534,6 +540,7 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
 {
     // todo : send message to Message dock and get rid or console
   qDebug() << "Finished discovering\n";
+  //messageList->addItem(QString::fromLocal8Bit("I: Finished discovering."));
 
   g_main_loop_quit (mainWindow->loop);
 }
@@ -613,6 +620,7 @@ void MainWindow::createDiscoverer()
     discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
     if (!discoverer) {
       qDebug() << "Error creating discoverer instance: " << err->message;
+      messageList->addItem(QString::fromLocal8Bit("E: Error creating discoverer instance: ") + QString::fromLocal8Bit(err->message));
       g_clear_error (&err);
       return;
     }

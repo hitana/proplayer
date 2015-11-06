@@ -66,7 +66,8 @@
      MainWindow();
      ~MainWindow();
 
-     GMainLoop     * loop;  // todo : remove from public
+     GMainLoop     * loop;          // todo : remove from public
+     QListWidget   * messageList;   // todo : remove from public
 
  private slots:
      void about();
@@ -87,7 +88,6 @@
 
      QListWidget   * playList;
      QTextEdit     * codecInfo;
-     QListWidget   * messageList;
      GLWidget      * glWidget;
      GstDiscoverer * discoverer;
 
