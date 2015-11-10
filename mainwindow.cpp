@@ -282,8 +282,12 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
         gst_element_set_state (pipeline, GST_STATE_NULL);
     }
 
-    QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! glimagesink name=vsink sync=false");
+    //QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! glimagesink name=vsink sync=false");   // plays ok
     //QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! autovideosink name=vsink sync=false"); // plays in separate window
+    QString pipelineString("filesrc location=" +
+                           playList->currentItem()->text() +
+                           " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope ! ximagesink name=asink");
+
     char pipelineChars[PATH_MAX];
     sprintf (pipelineChars, "%s", pipelineString.toLocal8Bit().data());
     //sprintf (pipelineChars, "%s", pipelineString.toLatin1().data());
@@ -298,7 +302,14 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
     GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
     gst_object_unref (vsink);
-    GstStateChangeReturn sret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
+
+    GstElement * audiowave = gst_bin_get_by_name (GST_BIN (pipeline), "asink");
+    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (audiowave), (guintptr)audioForm->winId());
+    gst_object_unref (audiowave);
+
+    //GstStateChangeReturn sret =
+    gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
     GstBus * bus = gst_element_get_bus (pipeline);
     //GstMessage * msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, (GstMessageType)(GST_MESSAGE_ERROR | GST_MESSAGE_EOS)); // blocks whole app
@@ -681,6 +692,13 @@ void MainWindow::createDiscoverer()
      messageList = new QListWidget(dock);
      dock->setWidget(messageList);
      addDockWidget(Qt::BottomDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
+
+
+     dock = new QDockWidget (tr("Audio waveform"), this);
+     audioForm = new QGLWidget(dock);
+     dock->setWidget(audioForm);
+     addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
      connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));

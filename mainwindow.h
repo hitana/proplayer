@@ -101,6 +101,7 @@
      QTextEdit     * codecInfo;
      GLWidget      * glWidget;
      GstDiscoverer * discoverer;
+     QGLWidget     * audioForm;
 
      QMenu *fileMenu;
      QMenu *editMenu;
