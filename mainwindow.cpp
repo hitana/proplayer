@@ -284,9 +284,22 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
 
     //QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! glimagesink name=vsink sync=false");   // plays ok
     //QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! autovideosink name=vsink sync=false"); // plays in separate window
-    QString pipelineString("filesrc location=" +
-                           playList->currentItem()->text() +
+
+#if defined(Q_OS_MAC)
+    // todo : resize audiowave output to dock sizes
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+                           " ! decodebin name=dec ! queue ! glvideosink name=vsink dec. ! audioconvert ! wavescope ! glimagesink name=asink");
+ #elif defined(Q_OS_UNIX)
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
                            " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope ! ximagesink name=asink");
+ #elif defined(Q_OS_WIN)
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+                           " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope ! ximagesink name=asink");
+ #endif
+
+//    GstVideoSink * audiosink = (GstVideoSink*) gst_bin_get_by_name (GST_BIN (pipeline), "asink");
+//    audiosink->width = audioForm->width();
+//    audiosink->height = audioForm->height();
 
     char pipelineChars[PATH_MAX];
     sprintf (pipelineChars, "%s", pipelineString.toLocal8Bit().data());
