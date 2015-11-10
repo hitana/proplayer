@@ -288,7 +288,7 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
 #if defined(Q_OS_MAC)
     // todo : resize audiowave output to dock sizes
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-                           " ! decodebin name=dec ! queue ! glvideosink name=vsink dec. ! audioconvert ! wavescope ! glimagesink name=asink");
+                           " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope ! glimagesink name=asink");
  #elif defined(Q_OS_UNIX)
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
                            " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope ! ximagesink name=asink");
