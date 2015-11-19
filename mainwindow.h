@@ -53,6 +53,8 @@
 
 #include <gst/pbutils/pbutils.h>
 
+#define MAX_AUDIO_TRACKS 64
+
  class QAction;
  class QListWidget;
  class QMenu;
@@ -66,6 +68,29 @@
      MT_DEBUG,
      MT_COUNT
  };
+
+ typedef struct _BunchOfGstElements
+ {
+     GstElement * filesrc;
+     GstElement * decodebin;
+     GstElement * queue;
+     GstElement * tsdemux;
+     GstElement * audioconvert;
+     GstElement * wavescope;
+     GstElement * videoconvert;
+     GstElement * ximagesink;
+     GstElement * xvimagesink;
+     GstElement * mpeg2dec;
+
+     GstElement * tee;  // todo : remove
+
+     GstElement * tees[MAX_AUDIO_TRACKS];
+     GstPad * tee_audio_sound_pad[MAX_AUDIO_TRACKS];
+     GstPad * tee_audio_visual_pad[MAX_AUDIO_TRACKS];
+     unsigned int audioTracks;
+
+     GstElement * demux;
+ } BunchOfGstElements;
 
  class MainWindow : public QMainWindow
  {
@@ -92,6 +117,7 @@
      void createStatusBar();
      void createDockWindows();
      void createCentralWidget();
+     void createAudioDock(int trackNumber);
      void createDiscoverer();
      void createVlc();
 
@@ -117,6 +143,14 @@
      //libvlc_media_player_t *vlcPlayer;
 
      GstElement * pipeline;
+
+ private:
+     int createAudioPipelineBranch(int trackNumber);
+     void cleanup();
+     int createPipelineByString ();
+     int createPipelineByCode ();
+
+     BunchOfGstElements bunch;
 
  protected:
      void dragEnterEvent(QDragEnterEvent *event);
