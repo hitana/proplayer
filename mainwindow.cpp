@@ -543,12 +543,14 @@ int MainWindow::createPipelineByCode ()
     bunch.tsdemux = gst_element_factory_make ("tsdemux", "tsdemux");
     bunch.wavescope = gst_element_factory_make ("wavescope", "wavescope");
     bunch.tee = gst_element_factory_make("tee", "tee");
-    bunch.mpeg2dec = gst_element_factory_make("mpeg2dec", "mpeg2dec");
+
 
 #if defined(Q_OS_MAC)
+    bunch.mpeg2dec = gst_element_factory_make("avdec_mpeg2video", "mpeg2dec");
     bunch.ximagesink = gst_element_factory_make ("glimagesink", "ximagesink");
     bunch.xvimagesink = gst_element_factory_make ("glimagesink", "xvimagesink");
 #else
+    bunch.mpeg2dec = gst_element_factory_make("mpeg2dec", "mpeg2dec");
     bunch.ximagesink = gst_element_factory_make ("ximagesink", "ximagesink");
     bunch.xvimagesink = gst_element_factory_make ("xvimagesink", "xvimagesink");
 #endif
