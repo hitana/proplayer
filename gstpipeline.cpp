@@ -209,7 +209,7 @@ void GStreamerPipeline::Start()
         {
             GError *err = NULL;
             gst_message_parse_error (msg, &err, NULL);
-            qDebug() << "ERROR: %s", err->message;
+            qDebug() << "ERROR: " << err->message;
             g_error_free (err);
             gst_message_unref (msg);
         }
@@ -273,7 +273,7 @@ unsigned char* GStreamerPipeline::bufToVidDataStart(void *buf)
 */
 
     GstMapInfo gstMapInfo;
-    GstBuffer * gstBuf;
+    //GstBuffer * gstBuf;
     qDebug() << "gst_buffer_map...";
     if (!gst_buffer_map ((GstBuffer*)buf, &gstMapInfo, (GstMapFlags)( GST_MAP_READ | GST_MAP_WRITE ))) {
         gst_buffer_unmap ((GstBuffer*)buf, &gstMapInfo);
@@ -485,7 +485,7 @@ gboolean GStreamerPipeline::bus_call(GstBus *bus, GstMessage *msg, GStreamerPipe
             gchar *debug = NULL;
             GError *err = NULL;
             gst_message_parse_error(msg, &err, &debug);
-            qDebug() << "Error: %s", err->message;
+            qDebug() << "Error: " << err->message;
             g_error_free (err);
             if(debug)
             {
