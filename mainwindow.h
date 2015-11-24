@@ -53,7 +53,8 @@
 
 #include <gst/pbutils/pbutils.h>
 
-#define MAX_AUDIO_TRACKS 64
+//#define MAX_AUDIO_TRACKS 64
+#define MAX_AUDIO_TRACKS 4
 
  class QAction;
  class QListWidget;
@@ -72,21 +73,11 @@
  typedef struct _BunchOfGstElements
  {
      GstElement * filesrc;
-     GstElement * decodebin;
      GstElement * queue;
      GstElement * tsdemux;
-     GstElement * audioconvert;
-     GstElement * wavescope;
-     GstElement * videoconvert;
-     GstElement * ximagesink;
      GstElement * xvimagesink;
      GstElement * mpeg2dec;
 
-     GstElement * tee;  // todo : remove
-
-     GstElement * tees[MAX_AUDIO_TRACKS];
-     GstPad * tee_audio_sound_pad[MAX_AUDIO_TRACKS];
-     GstPad * tee_audio_visual_pad[MAX_AUDIO_TRACKS];
      unsigned int audioTracks;
 
      GstElement * demux;
@@ -102,8 +93,15 @@
 
      GMainLoop     * loop;          // todo : remove from public
      QListWidget   * messageList;   // todo : remove from public
+     BunchOfGstElements bunch;
 
+     void qSleep(int ms);
      void addColoredLog (const QString &line, MessageType type);
+     GstPad * createAudioPipelineBranch(int trackNumber, GstPad * srcpad);
+
+     // todo : make more elegant
+     QGLWidget   * audioWidgets[MAX_AUDIO_TRACKS];
+     GstElement * imagesinks[MAX_AUDIO_TRACKS];
 
  private slots:
      void about();
@@ -117,9 +115,10 @@
      void createStatusBar();
      void createDockWindows();
      void createCentralWidget();
-     void createAudioDock(int trackNumber);
      void createDiscoverer();
      void createVlc();
+
+     void addAudioDock(int trackNumber);
 
      void insertMediaInfo (const char * uri);
 
@@ -145,12 +144,12 @@
      GstElement * pipeline;
 
  private:
-     int createAudioPipelineBranch(int trackNumber);
+
      void cleanup();
      int createPipelineByString ();
      int createPipelineByCode ();
-
-     BunchOfGstElements bunch;
+     GstElement * checkGstElement(const gchar * name);
+     GstElement * findVideosink();
 
  protected:
      void dragEnterEvent(QDragEnterEvent *event);
