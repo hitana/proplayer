@@ -390,7 +390,7 @@ void GLWidget::newFrame(int vidIx)
         // Load the gst buf into a texture
         if(this->m_vidTextures[vidIx].texInfoValid == false)
         {
-            qDebug() << "Setting up texture info for vid %d", vidIx;
+            qDebug() << "Setting up texture info for vid " << vidIx;
 
             // Try and keep this fairly portable to other media frameworks by
             // leaving info extraction within pipeline class
