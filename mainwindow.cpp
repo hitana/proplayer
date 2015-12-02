@@ -639,9 +639,20 @@ int MainWindow::createPipelineByString ()
     //QString pipelineString("filesrc location=" + playList->currentItem()->text() + " ! decodebin ! autovideosink name=vsink sync=false"); // plays in separate window
 
 #if defined(Q_OS_MAC)
-    // todo : resize audiowave output to dock sizes
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-                           " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink");
+      //                     " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink");
+    // for eg., /Users/qa/Desktop/media/atomic.ts
+    " ! tsdemux name=demux ! queue ! avdec_mpeg2video ! glimagesink name=vsink ");
+
+    // todo : use more stable version of gst-discoverer
+    // and use it for demux selection and pipeline creation
+
+    for (int i=0; i<bunch.audioTracks; i++){
+        char audioBranch[256];
+        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d", i, i);
+        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d", i, i);
+        pipelineString.append(audioBranch);
+    }
  #elif defined(Q_OS_UNIX)
 
     /*
