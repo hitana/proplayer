@@ -49,7 +49,7 @@
  #include <QtMultimedia>
 
  //#include <vlc/vlc.h>
-#include "glwidget.h"
+#include "videowidget.h"
 
 #include <gst/pbutils/pbutils.h>
 
@@ -73,15 +73,66 @@
  typedef struct _BunchOfGstElements
  {
      GstElement * filesrc;
-     GstElement * queue;
-     GstElement * tsdemux;
+     //GstElement * queue;
+     //GstElement * tsdemux;
      GstElement * xvimagesink;
-     GstElement * mpeg2dec;
+     //GstElement * mpeg2dec;
+
+     GstElement * decodebin;    // test
 
      unsigned int audioTracks;
 
-     GstElement * demux;
+     //GstElement * demux;
+
  } BunchOfGstElements;
+
+ typedef struct _AudioPipeline
+ {
+     //GstPadTemplate *tee_src_pad_template;
+     //GstPad *tee_audio_sound_pad, *tee_audio_visual_pad;
+     //GstPad *queue_audio_sound_pad, *queue_audio_visual_pad;
+
+     //GstElement * decodebin;
+     //GstElement * queue;
+     GstElement * wavescope;
+     GstElement * convert;
+     GstElement * imagesink;
+     //GstElement * tee;
+     //GstElement * visual_queue;
+     //GstElement * sound_queue;
+     //GstElement * audiosink;
+     //GstElement * typefind;
+
+     GstPad * headSinkPad;
+
+ } AudioPipeline;
+
+class AudioWidget : public QGLWidget
+{
+public:
+    AudioWidget (QWidget *parent) : QGLWidget(parent)
+    {
+        setAutoFillBackground(true);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        setMinimumHeight(80);
+    }
+/*
+    QSize sizeHint() const
+    {
+        //return QSize(300, 150);
+        if (this->height() < 100){
+            return QSize(this->width(), 100);
+        }
+        return QSize(this->width(), this->width());
+    }
+    QSize minimumSizeHint()
+    {
+        if (this->height() < 100){
+            return QSize(this->width(), 100);
+        }
+        return QSize(200, 100);
+    }*/
+};
 
  class MainWindow : public QMainWindow
  {
@@ -91,17 +142,22 @@
      MainWindow();
      ~MainWindow();
 
-     GMainLoop     * loop;          // todo : remove from public
-     QListWidget   * messageList;   // todo : remove from public
+     // todo : remove from public
+     GstElement * pipeline;
+     GMainLoop     * loop;
+     QListWidget   * messageList;
      BunchOfGstElements bunch;
+     VideoWidget   * videoWidget;
+
+     AudioPipeline audioBranches[MAX_AUDIO_TRACKS];
 
      void qSleep(int ms);
      void addColoredLog (const QString &line, MessageType type);
-     GstPad * createAudioPipelineBranch(int trackNumber, GstPad * srcpad);
+     int linkAudioBranch (int trackNumber);
 
      // todo : make more elegant
-     QGLWidget   * audioWidgets[MAX_AUDIO_TRACKS];
-     GstElement * imagesinks[MAX_AUDIO_TRACKS];
+     QDockWidget * audioDocks[MAX_AUDIO_TRACKS];
+     int numberOfAudioDocks;
 
  private slots:
      void about();
@@ -119,14 +175,14 @@
      void createVlc();
 
      void addAudioDock(int trackNumber);
+     void removeAudioDocks();
 
      void insertMediaInfo (const char * uri);
 
      QListWidget   * playList;
      QTextEdit     * codecInfo;
-     GLWidget      * glWidget;
      GstDiscoverer * discoverer;
-     QGLWidget     * audioForm;
+     //QGLWidget     * audioForm;
 
      QMenu *fileMenu;
      QMenu *editMenu;
@@ -141,8 +197,6 @@
      //libvlc_instance_t *vlcInstance;
      //libvlc_media_player_t *vlcPlayer;
 
-     GstElement * pipeline;
-
  private:
 
      void cleanup();
@@ -150,11 +204,11 @@
      int createPipelineByCode ();
      GstElement * checkGstElement(const gchar * name);
      GstElement * findVideosink();
+     int createAudioBranchElements(int index);
 
  protected:
      void dragEnterEvent(QDragEnterEvent *event);
      void dropEvent(QDropEvent *event);
-
  };
 
  #endif

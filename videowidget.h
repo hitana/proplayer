@@ -126,12 +126,12 @@ typedef struct _GLShaderModule
     QGLShader::ShaderType type;
 } GLShaderModule;
 
-class GLWidget : public QGLWidget
+class VideoWidget : public QGLWidget
 {
     Q_OBJECT
 public:
-    explicit GLWidget(const QGLFormat &format, QWidget *parent = 0);
-    ~GLWidget();
+    explicit VideoWidget(const QGLFormat &format, QWidget *parent = 0);
+    ~VideoWidget();
 
     virtual void initVideo();
 

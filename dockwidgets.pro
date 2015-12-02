@@ -6,14 +6,14 @@ CONFIG += console
     pipeline.h \
     asyncwaitingqueue.h \
     gstpipeline.h \
-    glwidget.h \
-    yuvdebugwindow.h
+    yuvdebugwindow.h \
+    videowidget.h
  SOURCES         = main.cpp \
                    mainwindow.cpp \
     pipeline.cpp \
     gstpipeline.cpp \
-    glwidget.cpp \
-    yuvdebugwindow.cpp
+    yuvdebugwindow.cpp \
+    videowidget.cpp
  RESOURCES       = dockwidgets.qrc
 
  unix {

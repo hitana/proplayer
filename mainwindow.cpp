@@ -41,6 +41,7 @@
 #include <QtGui>
 #include <QtPrintSupport>
 #include <QtWidgets>
+#include <QMainWindow>
 
 #define DEFAULT_VIDEOSINK "autovideosink"
 
@@ -56,8 +57,11 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow);
  * one could use autovideosink from gst-plugins-good instead
  */
 
-static void on_new_demux_pad(GstElement *element, GstPad *pad, MainWindow * mainwindow);
-static void on_new_decodebin_pad (GstElement *element, GstPad *pad, GstElement * nextElement);
+static void on_new_decodebin_pad (GstElement *element, GstPad *pad, gpointer data);
+static void on_autoplug_continue (GstElement *decodebin, GstPad *pad, GstCaps * gstcaps, gpointer data);
+static void on_no_more_pads (GstElement * element, gpointer data);
+static void on_pad_removed (GstElement * element, GstPad * oldpad, gpointer data);
+static void on_have_type (GstElement *typefind, guint probability, GstCaps *caps, gpointer data);
 
 #ifdef Q_OS_WIN
 #include <windows.h> // for Sleep
@@ -77,12 +81,15 @@ void MainWindow::qSleep(int ms)
 
 GstElement * MainWindow::checkGstElement(const gchar * name)
 {
-    GstStateChangeReturn sret;
+    //GstStateChangeReturn sret;
     GstElement * element;
 
     //if (element = gst_element_factory_make (name, NULL))
     if ((element = gst_element_factory_make (name, name)))    // use the same name
     {
+        g_printerr("findVideosink: Found %s\n", name);
+        return element;
+        /*
         sret = gst_element_set_state (element, GST_STATE_READY);
         if (sret == GST_STATE_CHANGE_SUCCESS)
         {
@@ -90,7 +97,7 @@ GstElement * MainWindow::checkGstElement(const gchar * name)
             return element;
         }
         gst_element_set_state (element, GST_STATE_NULL);
-        gst_object_unref (element);
+        gst_object_unref (element);*/
     }
     return NULL;
 }
@@ -123,6 +130,7 @@ GstElement * MainWindow::findVideosink()
      gst_init (NULL, NULL);
 
      bunch.audioTracks = 0;
+     numberOfAudioDocks = 0;
 
      createActions();
      createMenus();
@@ -185,7 +193,7 @@ GstElement * MainWindow::findVideosink()
      }
  }
 
- void MainWindow::insertMediaInfo (const char *uri2)
+ void MainWindow::insertMediaInfo (const char * filepath)
  {
      QTextDocument *document = codecInfo->document();
      QTextCursor cursor(document);
@@ -203,7 +211,12 @@ GstElement * MainWindow::findVideosink()
      cursor.insertText(infoList.at(i));
      cursor.endEditBlock();
  */
-     const gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";
+     bunch.audioTracks = 0; // test, clear before discover
+
+     //const gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";   // for test
+     gchar uri[PATH_MAX];
+     snprintf (uri, PATH_MAX, "file://%s", filepath);
+     qDebug () << "insertMediaInfo: " << uri;
 
        //cursor.insertBlock();
        //cursor.beginEditBlock();
@@ -256,24 +269,95 @@ GstElement * MainWindow::findVideosink()
      }*/
  }
 
- void MainWindow::onSelectPlaylist(const QString &playlistItem)
- {
-     Q_UNUSED(playlistItem);
-     char path[PATH_MAX];
-     sprintf (path, "%s", playList->currentItem()->text().toLocal8Bit().data());
-     insertMediaInfo(path);
- }
+void MainWindow::onSelectPlaylist(const QString &playlistItem)
+{
+    Q_UNUSED(playlistItem);
+    char path[PATH_MAX];
+    sprintf (path, "%s", playList->currentItem()->text().toLocal8Bit().data());
+}
 
-GstPad * MainWindow::createAudioPipelineBranch(int trackNumber, GstPad * srcpad)
+int MainWindow::createAudioBranchElements(int index)
+{
+    if (index >= MAX_AUDIO_TRACKS){
+        g_printerr ("Index = %d is out of range.\n", index);
+        addColoredLog("E: Index is out of range.", MT_ERROR);
+        return -1;
+    }
+    int i = index;
+    char waveScopeName[32];
+    char audioConvertName[32];
+    char imageSinkName[32];
+    char decodebinName[32];
+    //char teeName[32];
+
+    sprintf (waveScopeName, "scope_%d", i);
+    sprintf (audioConvertName, "aconvert_%d", i);
+    sprintf (imageSinkName, "asink_%d", i);
+    sprintf (decodebinName, "decbin_%d", i);
+    //sprintf (teeName, "tee_%d", i);
+
+    //audioBranches[i].queue = gst_element_factory_make ("queue", "audio_queue");
+    //audioBranches[i].decodebin = gst_element_factory_make ("decodebin", "decodebin");
+    audioBranches[i].convert = gst_element_factory_make ("audioconvert", audioConvertName);
+    audioBranches[i].wavescope = gst_element_factory_make ("wavescope", waveScopeName);
+    //audioBranches[i].tee = gst_element_factory_make ("tee", teeName);
+    //audioBranches[i].sound_queue = gst_element_factory_make ("queue", "sound_queue");
+    //audioBranches[i].visual_queue = gst_element_factory_make ("queue", "visual_queue");
+    //audioBranches[i].audiosink = gst_element_factory_make ("autoaudiosink", "audiosink");
+    //audioBranches[i].typefind = gst_element_factory_make ("typefind", "typefind");
+
+#if defined(Q_OS_MAC)
+    audioBranches[i].imagesink = gst_element_factory_make ("glimagesink", imageSinkName);
+#else
+    audioBranches[i].imagesink = gst_element_factory_make ("ximagesink", imageSinkName);
+#endif
+
+    if (
+        // !audioBranches[i].queue || !audioBranches[i].decodebin
+        //||
+           !audioBranches[i].imagesink || !audioBranches[i].wavescope
+        || !audioBranches[i].convert
+        //|| !audioBranches[i].typefind   // test
+        //|| !audioBranches[i].tee || !audioBranches[i].sound_queue
+        //|| !audioBranches[i].visual_queue || !audioBranches[i].audiosink
+         )
+    {
+        g_printerr ("Not all elements could be created.\n");
+        addColoredLog("E: " + QString::fromLocal8Bit(__FUNCTION__) + ": Not all elements could be created.", MT_ERROR);
+        return -1;
+    }
+
+    g_object_set (audioBranches[i].wavescope, "shader", 0, "style", 3, NULL);
+    g_object_set (audioBranches[i].imagesink, "name", imageSinkName, NULL);
+
+    //g_signal_connect (audioBranches[i].decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), audioBranches[i].tee);
+    //g_signal_connect (audioBranches[i].decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), audioBranches[i].convert);
+    //g_signal_connect (audioBranches[i].decodebin, "autoplug-continue", G_CALLBACK (on_autoplug_continue), audioBranches[i].convert);
+    //g_signal_connect (audioBranches[i].decodebin, "no-more-pads", G_CALLBACK (on_no_more_pads), NULL);
+    //g_signal_connect (audioBranches[i].decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), audioBranches[i].convert);
+    //g_signal_connect (audioBranches[i].decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), NULL);
+    //g_signal_connect (audioBranches[i].decodebin, "pad-removed", G_CALLBACK (on_pad_removed), NULL);
+    //g_signal_connect (audioBranches[i].decodebin, "have-type", G_CALLBACK (on_have_type), loop);
+
+
+    // get sinkpad of first element to link it later
+    //  it will be unreferenced in calling function
+    //audioBranches[i].headSinkPad = gst_element_get_static_pad (audioBranches[i].queue, "sink"); // todo : carefull, look after unref
+    audioBranches[i].headSinkPad = gst_element_get_static_pad (audioBranches[i].convert, "sink");
+    g_printerr ("createAudioBranchElements OK.\n");
+    return 0;
+}
+
+int MainWindow::linkAudioBranch(int trackNumber/*, GstPad * srcpad*/)
 {
     // create a piece of pipeline for every audio track in mediafile
     // it splits audio for visual wavescope and playing sound
     // tee name=t ! queue !  audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d t. ! queue ! autoaudiosink
 
     // update: remove tee and playing audio, just visualize it
-    // queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d
+    // queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d    
 
-    g_printerr ("createAudioPipelineBranch: in. trackNumber = %d\n", trackNumber);
+    g_printerr ("linkAudioBranch: in. trackNumber = %d\n", trackNumber);
 
     if (trackNumber >= MAX_AUDIO_TRACKS){
         g_printerr ("Too much audio tracks.\n");
@@ -281,86 +365,43 @@ GstPad * MainWindow::createAudioPipelineBranch(int trackNumber, GstPad * srcpad)
         return NULL;
     }
     int i = trackNumber;
-    char waveScopeName[32];
-    char audioConvertName[32];
-    char imageSinkName[32];
-    //char teeName[32];
 
-    sprintf (waveScopeName, "scope_%d", trackNumber);
-    sprintf (audioConvertName, "aconvert_%d", trackNumber);
-    sprintf (imageSinkName, "asink_%d", trackNumber);
-    //sprintf (teeName, "tee_%d", trackNumber);
+    /*int ret = createAudioBranchElements(i); // todo : create here of beforehand ?
+    g_printerr ("linkAudioBranch: createAudioBranchElements rets %d\n", ret);
+    if (ret < 0)
+    {
+        g_printerr ("linkAudioBranch: createAudioBranchElements failed\n");
+        addColoredLog("E: linkAudioBranch: createAudioBranchElements failed", MT_ERROR);
+        return -1;
+    }*/
 
-    //GstPadTemplate *tee_src_pad_template;
-    //GstPad *tee_audio_sound_pad, *tee_audio_visual_pad;
-    //GstPad *queue_audio_sound_pad, *queue_audio_visual_pad;
-    //GstPad *decodebin_sinkpad;
-    GstPad *queue_sinkpad;
-    //GstElement *tee;
-    //GstElement *visual_queue, *sound_queue;
-    GstElement *queue;
-    GstElement *wavescope, *convert;
-    //GstElement *audiosink;
-    GstElement *imagesink;
-    GstElement *decodebin;
+    gst_bin_add_many (GST_BIN (this->pipeline),
+                      //audioBranches[i].queue, audioBranches[i].decodebin,
+                      audioBranches[i].convert, audioBranches[i].wavescope, audioBranches[i].imagesink,
 
-    // Create the elements
-    queue = gst_element_factory_make ("queue", "audio_queue");
-    decodebin = gst_element_factory_make ("decodebin", "decodebin");
-    //tee = gst_element_factory_make ("tee", teeName);
-    //sound_queue = gst_element_factory_make ("queue", "sound_queue");
-    //visual_queue = gst_element_factory_make ("queue", "visual_queue");
-    //audiosink = gst_element_factory_make ("autoaudiosink", "audiosink");
+                      //audioBranches[i].typefind,
 
-#if defined(Q_OS_MAC)
-    imagesink = gst_element_factory_make ("glimagesink", imageSinkName);
+                      //audioBranches[i].tee, audioBranches[i].sound_queue, audioBranches[i].visual_queue,
+                      //audioBranches[i].audiosink,
+                      NULL);
 
-#else
-    imagesink = gst_element_factory_make ("ximagesink", imageSinkName);
-#endif
-
-    convert = gst_element_factory_make ("audioconvert", audioConvertName);
-    wavescope = gst_element_factory_make ("wavescope", waveScopeName);
-
-    //if (!decodebin || !tee || !sound_queue || !visual_queue || !audiosink || !imagesink || !wavescope || !convert) {
-    if (!queue || !decodebin || !imagesink || !wavescope || !convert) {
-    //if (!decodebin || !imagesinks[trackNumber] || !wavescope || !convert) {
-        g_printerr ("Not all elements could be created.\n");
-        addColoredLog("E: " + QString::fromLocal8Bit(__FUNCTION__) + ": Not all elements could be created.", MT_ERROR);
-        return NULL;
-    }
-
-    g_object_set (wavescope, "shader", 0, "style", 3, NULL);
-    g_object_set (imagesink, "name", imageSinkName, NULL);
-
-    g_printerr ("createAudioPipelineBranch: gst_bin_add_many imagesinks[i] = %p...\n", imagesinks[i]);
-
-    //gst_bin_add_many (GST_BIN (this->pipeline), decodebin, tee, sound_queue, visual_queue, audiosink, imagesink, convert, wavescope, NULL);
-    gst_bin_add_many (GST_BIN (this->pipeline), queue, decodebin, imagesink, convert, wavescope, NULL);
-    //gst_bin_add_many (GST_BIN (this->pipeline), decodebin, convert, wavescope, imagesinks[i], NULL);
-
-    g_printerr ("createAudioPipelineBranch: gst_element_link_many...\n");
-
-    if (gst_element_link (queue, decodebin) != TRUE)
+    /*if (gst_element_link (audioBranches[i].queue, audioBranches[i].decodebin) != TRUE)
     {
         g_printerr ("Elements could not be linked.\n");
         addColoredLog("E: Elements could not be linked..", MT_ERROR);
-        return NULL;
-    }
+        return -1;
+    }*/
 
-    // Link all elements that can be automatically linked because they have "Always" pads
+    // link elements with "always" pads
     //if (gst_element_link_many (visual_queue, convert, wavescope, imagesink, NULL) != TRUE ||
     //    gst_element_link_many (sound_queue, audiosink, NULL) != TRUE)
-    if (gst_element_link_many (convert, wavescope, imagesink, NULL) != TRUE)
-    //if (gst_element_link_many (convert, wavescope, imagesinks[trackNumber], NULL) != TRUE)
+    //if (gst_element_link_many (queue, mpg123audiodec, convert, wavescope, imagesink, NULL) != TRUE)   // was here
+    if (gst_element_link_many (audioBranches[i].convert, audioBranches[i].wavescope, audioBranches[i].imagesink, NULL) != TRUE)
     {
         g_printerr ("Elements could not be linked.\n");
         addColoredLog("E: Elements could not be linked..", MT_ERROR);
-        return NULL;
-    }
-
-    //g_signal_connect (decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), tee);
-    g_signal_connect (decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), convert);
+        return -1;
+    }    
 
     /*// Manually link the Tee, which has "Request" pads
     tee_src_pad_template = gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee), "src%d");
@@ -383,65 +424,29 @@ GstPad * MainWindow::createAudioPipelineBranch(int trackNumber, GstPad * srcpad)
     gst_object_unref (queue_audio_visual_pad);
     */
 
-    g_printerr ("createAudioPipelineBranch: gst_element_get_static_pad sink...\n");
-/*
-    // link srcpad of previous element with tee sinkpad
-    decodebin_sinkpad = gst_element_get_static_pad (decodebin, "sink");
-    if (gst_pad_link (srcpad, decodebin_sinkpad) != GST_PAD_LINK_OK)
-    {
-        g_printerr ("%s(%d): Decodebin sink could not be linked to the given srcpad.\n", __FUNCTION__, __LINE__);
-        addColoredLog("E: Decodebin sink could not be linked to the given srcpad.", MT_ERROR);
-        return NULL;
-    }*/
-
-    // link srcpad of previous element with tee sinkpad
-    queue_sinkpad = gst_element_get_static_pad (queue, "sink");
-    if (gst_pad_link (srcpad, queue_sinkpad) != GST_PAD_LINK_OK)
-    {
-        g_printerr ("%s(%d): Queue sink could not be linked to the given srcpad.\n", __FUNCTION__, __LINE__);
-        addColoredLog("E: Queue sink could not be linked to the given srcpad.", MT_ERROR);
-        return NULL;
-    }
-    gst_object_unref (queue_sinkpad);
-
     // create a dock and set it as a canvas for wavescope
     //addAudioDock(trackNumber);
 
+    // todo : remove because it should be done in addAudioDock()
+    //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (audioBranches[i].imagesink), (guintptr)audioForm->winId());    // was here
+    //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (audioBranches[i].imagesink), (guintptr)audioWidgets[trackNumber]->winId());
 
-    g_printerr ("createAudioPipelineBranch: gst_bin_get_by_name %s...\n", imageSinkName);
-/*    GstElement * waveElement = gst_bin_get_by_name (GST_BIN (pipeline), imageSinkName);
-    if (waveElement != NULL){
-        //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (waveElement), (guintptr)audioWidgets[trackNumber]->winId());
-        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (waveElement), (guintptr)audioForm->winId());
-
-        gst_object_unref (waveElement);
-        g_printerr ("addAudioDock: gst_video_overlay_set_window_handle OK.\n");
-    }
-    else {
-        g_printerr ("addAudioDock: ERROR! %s not found!\n", imageSinkName);
-    }*/
-
-
-    //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (imagesink), (guintptr)audioForm->winId());
-    //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (imagesink), (guintptr)audioWidgets[trackNumber]->winId());
-
-
-    g_printerr ("createAudioPipelineBranch: OK.\n");
-    //return decodebin_sinkpad;
-    return queue_sinkpad;
+    return 0;
 }
-
-static void on_new_demux_pad(GstElement *element, GstPad *pad, MainWindow * mainwindow)
+/*
+static void on_new_demux_pad(GstElement *element, GstPad *pad, gpointer data)
 {
     GstPad *sinkpad;
     GstCaps *caps;
     GstStructure *str;
+    MainWindow * mainwindow = (MainWindow*)data;
     BunchOfGstElements * bunch = &mainwindow->bunch;
 
     Q_UNUSED(element);
 
     caps = gst_pad_get_current_caps (pad);
     str = gst_caps_get_structure (caps, 0);
+    gst_caps_unref (caps);
 
     if (g_strrstr (gst_structure_get_name (str), "video"))
     {
@@ -451,33 +456,153 @@ static void on_new_demux_pad(GstElement *element, GstPad *pad, MainWindow * main
     else if (g_strrstr (gst_structure_get_name (str), "audio"))
     {
         //sinkpad = gst_element_get_static_pad (bunch->decodebin, "sink");
-        //qDebug() <<  "on_new_demux_pad: Got decodebin sinkpad for audio branch\n";
-
-        sinkpad = mainwindow->createAudioPipelineBranch(mainwindow->bunch.audioTracks, pad);
-        if (!sinkpad) {
-            qDebug() <<  "on_new_demux_pad: createAudioPipelineBranch failed.\n";
-            gst_caps_unref (caps);
+        int audioTrack = mainwindow->bunch.audioTracks;
+        if (mainwindow->linkAudioBranch(audioTrack) != 0)
+        {
+            qDebug() <<  "on_new_demux_pad: linkAudioBranch failed.\n";
             return;
         }
+        sinkpad = mainwindow->audioBranches[audioTrack].headSinkPad; // todo: does it +1 refcount?
+        qDebug() <<  "on_new_demux_pad: Got decodebin sinkpad for audio branch\n";
+
+        // test
+        gst_pad_link (pad, sinkpad);
+        gst_object_unref (sinkpad);
+        return;
+        // end test
     }
 
     if (!gst_pad_is_linked (sinkpad)) {
         if (gst_pad_link (pad, sinkpad) != GST_PAD_LINK_OK) {
             qDebug() <<  "on_new_demux_pad: Failed to link pads!\n";
         }
+        else {
+            qDebug() <<  "on_new_demux_pad: Link ok.\n";
+        }
     }
     gst_object_unref (sinkpad);
-    gst_caps_unref (caps);
+}
+*/
+static void on_no_more_pads (GstElement * element, gpointer data)
+{
+    qDebug() <<  "on_new_decodebin_pad: IN\n";
 }
 
-
-static void on_new_decodebin_pad (GstElement *element, GstPad *pad, GstElement * nextElement)
+static void on_autoplug_continue (GstElement *decodebin, GstPad *pad, GstCaps * gstcaps, gpointer data)
 {
+    qDebug() <<  "on_autoplug_continue: IN\n";
+}
+
+static void on_pad_removed (GstElement * element, GstPad * oldpad, gpointer data)
+{
+    qDebug() <<  "on_pad_removed: IN\n";
+
+    GstCaps *caps;
+    gchar *type;
+
+    caps = gst_pad_get_current_caps (oldpad);
+    type = gst_caps_to_string (caps);
+    g_print ("on_pad_removed: Media type %s found\n", type);
+    g_free (type);
+
+    /*
+    GstStructure *str;
+
+    caps = gst_pad_get_current_caps (oldpad);
+    str = gst_caps_get_structure (caps, 0);
+
+    qDebug() << "on_pad_removed: Pad desc: " << gst_structure_get_name (str);*/
+}
+
+static void on_have_type (GstElement *typefind, guint probability, GstCaps *caps, gpointer data)
+{
+    qDebug() <<  "on_have_type: IN\n";
+}
+
+static void on_new_decodebin_pad (GstElement *decodebin, GstPad *pad, gpointer data)
+{
+    // current pipeline:
+    // filesrc location=<path> ! decodebin name=dec ! xvimagesink dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink
+
+    qDebug() <<  "on_new_decodebin_pad: IN\n";
+
     GstPad *sinkpad;
     GstCaps *caps;
     GstStructure *str;
+    MainWindow * window = (MainWindow *)data;
 
-    Q_UNUSED(element);
+    Q_UNUSED(decodebin);
+
+    caps = gst_pad_get_current_caps (pad);
+    str = gst_caps_get_structure (caps, 0);
+
+    if (g_strrstr (gst_structure_get_name (str), "video"))
+    {
+        sinkpad = gst_element_get_static_pad (window->bunch.xvimagesink, "sink");
+        qDebug() <<  "on_new_decodebin_pad: Got sinkpad for video branch\n";
+
+        if (!gst_pad_is_linked (sinkpad)) {
+            if (gst_pad_link (pad, sinkpad) != GST_PAD_LINK_OK) {
+                qDebug() <<  "on_new_decodebin_pad: Failed to link pads!\n";
+            }
+        }
+    }
+    else if (g_strrstr (gst_structure_get_name (str), "audio"))
+    {
+        // test
+        //gst_caps_unref (caps);
+        //return;
+
+
+
+        int i = window->bunch.audioTracks;
+        if (window->linkAudioBranch(i) != 0)
+        {
+            qDebug() <<  "on_new_demux_pad: linkAudioBranch failed.\n";
+            return;
+        }
+        sinkpad = window->audioBranches[i].headSinkPad;
+        //sinkpad = gst_element_get_static_pad (window->audioBranches[i].convert, "sink");
+        qDebug() <<  "on_new_decodebin_pad: Got sinkpad for audio branch\n";
+
+        if (!gst_pad_is_linked (sinkpad)) {
+            if (gst_pad_link (pad, sinkpad) != GST_PAD_LINK_OK) {
+                qDebug() <<  "on_new_decodebin_pad: Failed to link pads!\n";
+            }
+            else {
+                //qDebug() <<  "on_new_decodebin_pad: gst_pad_unlink..\n";
+                //gst_pad_unlink(pad, sinkpad);
+
+                qDebug() <<  "on_new_decodebin_pad: Added audio branch\n";
+                /*window->bunch.audioTracks ++;
+                qDebug() <<  "on_new_decodebin_pad: gst_video_overlay_set_window_handle ...\n";
+                gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (window->bunch.xvimagesink), (guintptr)window->glWidget->getWindowId());
+*/
+            }
+
+        }
+    }
+    else {
+        ;
+        // todo : log stream name here, to better understand the stream structure
+        qDebug() <<  "on_new_decodebin_pad: Strange stream found!\n";
+    }
+
+    gst_caps_unref (caps);
+    gst_object_unref (sinkpad);
+
+#if 0
+    GstElement * nextElement = (GstElement*) data;
+
+    // old way, not worked
+    qDebug() <<  "on_new_decodebin_pad: IN\n";
+
+    GstPad *sinkpad;
+    GstCaps *caps;
+    GstStructure *str;
+    GstElement * nextElement = (GstElement*) data;
+
+    Q_UNUSED(decodebin);
 
     caps = gst_pad_get_current_caps (pad);
     str = gst_caps_get_structure (caps, 0);
@@ -499,8 +624,9 @@ static void on_new_decodebin_pad (GstElement *element, GstPad *pad, GstElement *
         qDebug() <<  "on_new_decodebin_pad: Strange stream found!\n";
     }
 
-    gst_object_unref (sinkpad);
     gst_caps_unref (caps);
+    gst_object_unref (sinkpad);
+#endif
 }
 
 int MainWindow::createPipelineByString ()
@@ -517,6 +643,8 @@ int MainWindow::createPipelineByString ()
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
                            " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink");
  #elif defined(Q_OS_UNIX)
+
+    /*
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
       // ok
        //" ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
@@ -530,7 +658,53 @@ int MainWindow::createPipelineByString ()
       //" ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
 
      // test, works but shows garbage on top left corner
-        " ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink demux. ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
+       // " ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink demux. ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
+
+
+  " ! decodebin name=dec ! xvimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink"); // was ok for one audio
+
+
+   //" ! decodebin name=dec ! xvimagesink name=vsink "); // for appending several audio
+
+
+   */
+
+    /*
+     gst-launch-1.0 filesrc location=/home/vq/Видео/billiards.mkv !
+        matroskademux name=demux \
+        demux.video_0 ! queue ! h264parse ! eavcdec ! autovideosink \
+        demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink \
+        demux.audio_1 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink \
+        demux.audio_2 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink \
+        demux.audio_3 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink
+*/
+/*
+    // for /home/vq/Видео/Paradise.mp4
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+ "! qtdemux name=demux demux.video_0 ! queue ! h264parse ! eavcdec ! xvimagesink name=vsink ");
+    // demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink"
+*/
+/*
+    // for /home/vq/Видео/atomic.ts
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+ " ! tsdemux name=demux demux.video_0 ! queue ! mpeg2dec ! xvimagesink name=vsink ");
+    // demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink"
+*/
+    // for /home/vq/Видео/atomic.ts
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+ " ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink ");
+    // demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_0
+
+    // todo : make video branch and test it
+    // todo : use more stable version of gst-discoverer
+    // and use it for demux selection and pipeline creation
+
+    for (int i=0; i<bunch.audioTracks; i++){
+        char audioBranch[256];
+        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d", i, i);
+        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d", i, i);
+        pipelineString.append(audioBranch);
+    }
 
  #elif defined(Q_OS_WIN)
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
@@ -542,26 +716,29 @@ int MainWindow::createPipelineByString ()
     //sprintf (pipelineChars, "%s", pipelineString.toStdString().c_str());
 
     addColoredLog("I: Pipeline = " + pipelineString, MT_DEBUG);
+    qDebug() << "I: Pipeline = " << pipelineChars;
 
     // todo : seems glimagesink plays i-frames only
     pipeline = gst_parse_launch(pipelineChars, NULL);
     if (!pipeline) {
+        addColoredLog("E: createPipelineByString: gst_parse_launch failed", MT_DEBUG);
+        qDebug() << "E: createPipelineByString: gst_parse_launch failed\n";
         return -1;
     }
     GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
     if (!vsink) {
         return -1;
     }
-    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)glWidget->getWindowId());
+    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)videoWidget->getWindowId());
     gst_object_unref (vsink);
 
+    gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
-    //-----------------------------------------------------
-/*    // todo : remove it - this is now done in createAudioPipelineBranch()
-    GstElement * audiowave = gst_bin_get_by_name (GST_BIN (pipeline), "asink");
-    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (audiowave), (guintptr)audioForm->winId());
-    gst_object_unref (audiowave);
-  */  //-----------------------------------------------------
+
+    removeAudioDocks();
+    for (int i=0; i<bunch.audioTracks; i++){
+        addAudioDock(i);
+    }
 
     return 0;
 }
@@ -569,6 +746,7 @@ int MainWindow::createPipelineByString ()
 int MainWindow::createPipelineByCode ()
 {
     if (pipeline != NULL) {
+        g_printerr ("createPipelineByCode: gst_element_set_state NULL\n");
         gst_element_set_state (pipeline, GST_STATE_NULL);
 
         // todo : cleanup here ?
@@ -600,11 +778,13 @@ int MainWindow::createPipelineByCode ()
     pipeline = gst_pipeline_new (NULL);
 
     bunch.filesrc = gst_element_factory_make ("filesrc", "filesrc");
-    bunch.queue = gst_element_factory_make ("queue", "video_queue");
-    bunch.tsdemux = gst_element_factory_make ("tsdemux", "tsdemux");
+    //bunch.queue = gst_element_factory_make ("queue", "video_queue");
+    //bunch.tsdemux = gst_element_factory_make ("tsdemux", "tsdemux");
+
+    bunch.decodebin = gst_element_factory_make ("decodebin", "decodebin");
 
     bunch.xvimagesink = findVideosink();
-
+/*
 #if defined(Q_OS_MAC)
     bunch.mpeg2dec = gst_element_factory_make("avdec_mpeg2video", "mpeg2dec");
     //bunch.xvimagesink = gst_element_factory_make ("glimagesink", "xvimagesink");
@@ -612,42 +792,41 @@ int MainWindow::createPipelineByCode ()
     bunch.mpeg2dec = gst_element_factory_make("mpeg2dec", "mpeg2dec");
     //bunch.xvimagesink = gst_element_factory_make ("xvimagesink", "xvimagesink");
 #endif
-
+*/
     // test
-    for (unsigned int i=0; i<bunch.audioTracks; i++)
+    for (unsigned int i=0; i<MAX_AUDIO_TRACKS; i++)
     {
-        char imageSinkName[32];
-        sprintf (imageSinkName, "asink_%d", i);
-#if defined(Q_OS_MAC)
-        imagesinks[i] = gst_element_factory_make ("glimagesink", imageSinkName);
-#else
-        imagesinks[i] = gst_element_factory_make ("ximagesink", imageSinkName);
-#endif
-        g_object_set (imagesinks[i], "name", imageSinkName, NULL);
-
-        //gst_bin_add (GST_BIN (pipeline), imagesinks[i]);
+        createAudioBranchElements(i);
     }
-    // end test
+
 
     g_object_set (G_OBJECT (bunch.filesrc), "location", playList->currentItem()->text().toLocal8Bit().data(), NULL);
     g_object_set (bunch.xvimagesink, "name", "vsink", NULL);
-    g_object_set (bunch.tsdemux, "name", "demux", NULL);
+    //g_object_set (bunch.tsdemux, "name", "demux", NULL);
+    g_object_set (bunch.decodebin, "name", "dec", NULL);
 
-    if (!pipeline || !bunch.xvimagesink || !bunch.filesrc || !bunch.mpeg2dec || !bunch.queue || !bunch.tsdemux)
+    //if (!pipeline || !bunch.xvimagesink || !bunch.filesrc || !bunch.mpeg2dec || !bunch.queue || !bunch.tsdemux)
+    if (!pipeline || !bunch.xvimagesink || !bunch.filesrc || !bunch.decodebin)
     {
         g_printerr ("%s(%d): One of the GStreamer decoding elements is missing\n", __FUNCTION__, __LINE__);
         addColoredLog("E: One of the GStreamer decoding elements is missing.", MT_ERROR);
         return -1;
     }
 
-    gst_bin_add_many (GST_BIN (pipeline), bunch.filesrc, bunch.tsdemux, bunch.queue, bunch.mpeg2dec, bunch.xvimagesink,
-                      NULL); // no tee, no wavescope, audioconvert, no videoconvert, no ximagesink, no decodebin
+    //gst_bin_add_many (GST_BIN (pipeline), bunch.filesrc, bunch.tsdemux, bunch.queue, bunch.mpeg2dec, bunch.xvimagesink, NULL);
+    gst_bin_add_many (GST_BIN (pipeline), bunch.filesrc, bunch.decodebin, bunch.xvimagesink, NULL);
 
-    g_signal_connect (bunch.tsdemux, "pad-added", G_CALLBACK (on_new_demux_pad), this);
+    //g_signal_connect (bunch.tsdemux, "pad-added", G_CALLBACK (on_new_demux_pad), this);
+    g_signal_connect (bunch.decodebin, "pad-added", G_CALLBACK (on_new_decodebin_pad), this);
 
+    // old:
     // ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink demux. ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink
-    gst_element_link (bunch.filesrc, bunch.tsdemux);
-    gst_element_link_many(bunch.queue, bunch.mpeg2dec, bunch.xvimagesink, NULL);
+    //gst_element_link (bunch.filesrc, bunch.tsdemux);
+    //gst_element_link_many(bunch.queue, bunch.mpeg2dec, bunch.xvimagesink, NULL);
+
+    // current pipeline:
+    // filesrc location=/home/vq/Видео/atomic.ts ! decodebin name=dec ! xvimagesink dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink
+    gst_element_link(bunch.filesrc, bunch.decodebin);
 
     //GstBus * bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     //gst_bus_add_watch(bus, (GstBusFunc) bus_call, this);
@@ -655,7 +834,7 @@ int MainWindow::createPipelineByCode ()
 
     gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
-    gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (bunch.xvimagesink), (guintptr)glWidget->getWindowId());
+    //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (bunch.xvimagesink), (guintptr)glWidget->getWindowId());
 
     // todo : remove it - this is now done in createAudioPipelineBranch()
     /*GstElement * audiowave = gst_bin_get_by_name (GST_BIN (pipeline), "asink_0");
@@ -675,7 +854,13 @@ void MainWindow::onDoubleClick(const QModelIndex &modelIndex)
 {
     Q_UNUSED (modelIndex);
 
-    if (createPipelineByCode() != 0){
+    qDebug() << "onDoubleClick: insertMediaInfo " << playList->currentItem()->text();
+    insertMediaInfo(playList->currentItem()->text().toLocal8Bit().data());
+
+    qDebug() << "onDoubleClick: createPipeline ...";
+
+    //if (createPipelineByCode() != 0){
+    if (createPipelineByString() != 0){
         addColoredLog("E: Couldn't create pipeline.", MT_ERROR);
         return;
     }
@@ -728,6 +913,9 @@ static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointe
 
   mainWindow->addColoredLog("I:      " + QString::fromLocal8Bit(gst_tag_get_nick (tag)) +
                             ": " + QString::fromLocal8Bit(str), MT_INFO);
+
+  qDebug() << "print_tag_foreach: " << QString::fromLocal8Bit(gst_tag_get_nick (tag)) << ": " << QString::fromLocal8Bit(str);
+
   g_free (str);
 
   g_value_unset (&val);
@@ -753,15 +941,22 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
     mainWindow->addColoredLog("I: " + QString::fromLocal8Bit(gst_discoverer_stream_info_get_stream_type_nick (info)) +
                               ": " + QString::fromLocal8Bit((desc ? desc : "")), MT_INFO);
 
+    qDebug() << "print_stream_info" << QString::fromLocal8Bit(gst_discoverer_stream_info_get_stream_type_nick (info)) << ": " + QString::fromLocal8Bit((desc ? desc : ""));
+
     if (desc) {
         g_free (desc);
         desc = NULL;
     }
 
+    if (strstr (gst_discoverer_stream_info_get_stream_type_nick (info), "audio")){
+        mainWindow->bunch.audioTracks ++;
+        qDebug() << "print_stream_info: Found audio track";
+    }
+
     tags = gst_discoverer_stream_info_get_tags (info);
     if (tags) {
-        gst_tag_list_foreach (tags, print_tag_foreach, user_data);
-        mainWindow->addColoredLog("", MT_NONE);
+        //gst_tag_list_foreach (tags, print_tag_foreach, user_data);
+        //mainWindow->addColoredLog("", MT_NONE);
     }
 }
 
@@ -857,8 +1052,8 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
 
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
-      gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
-      mainWindow->addColoredLog("", MT_NONE);
+      //gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
+      //mainWindow->addColoredLog("", MT_NONE);
   }
 
   mainWindow->addColoredLog("I: Seekable: " +
@@ -949,11 +1144,8 @@ void MainWindow::createCentralWidget()
     glFormat.setProfile (QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
     glFormat.setSampleBuffers (true);
 
-    glWidget = new GLWidget(glFormat, this);
-
-    setCentralWidget(glWidget);
-
-    return;
+    videoWidget = new VideoWidget(glFormat, this);
+    setCentralWidget(videoWidget);
 }
 
 void MainWindow::createDiscoverer()
@@ -972,22 +1164,47 @@ void MainWindow::createDiscoverer()
     loop = g_main_loop_new (NULL, FALSE);
 }
 
-void MainWindow::addAudioDock(int trackNumber)
+void MainWindow::removeAudioDocks()
 {
+    for (int i=0; i<numberOfAudioDocks; i++){
+        QMainWindow::removeDockWidget(audioDocks[i]);
+    }
+}
+/*
+void MainWindow::showEvent(QShowEvent *)
+{
+    for (int i=0; i<numberOfAudioDocks; i++){
+        if (audioDocks[i]->height() < 200){
+            audioDocks[i]->resize(audioDocks[i]->width(), 200);
+        }
+    }
+}*/
+
+void MainWindow::addAudioDock(int trackNumber)
+{    
+    char caption[64];
     char elementName[32];
     sprintf (elementName, "asink_%d", trackNumber);
+    sprintf (caption, "Audio track #%d", trackNumber);
 
-    //docks[trackNumber]->show();   // todo : doesnot show
+    QDockWidget * audioDock = new QDockWidget(tr(caption), this);
+    //QGLWidget * audioWidget = new QGLWidget(audioDock);
+    AudioWidget * audioWidget = new AudioWidget(audioDock);
+
+    audioDock->setWidget(audioWidget);
+    addDockWidget(Qt::RightDockWidgetArea, audioDock);
+    viewMenu->addAction(audioDock->toggleViewAction());
+    audioDocks[numberOfAudioDocks++] = audioDock;
 
     GstElement * waveElement = gst_bin_get_by_name (GST_BIN (pipeline), elementName);
-    if (waveElement != NULL){
-        //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (waveElement), (guintptr)audioWidgets[trackNumber]->winId());
-        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (waveElement), (guintptr)audioForm->winId());
-
+    if (waveElement != NULL)
+    {
+        gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (waveElement), (guintptr)audioWidget->winId());
         gst_object_unref (waveElement);
         g_printerr ("addAudioDock: gst_video_overlay_set_window_handle OK.\n");
     }
-    else {
+    else
+    {
         addColoredLog("E: Audiosink element named " + QString::fromLocal8Bit(elementName) + " not found.", MT_ERROR);
     }
 
@@ -1023,28 +1240,13 @@ void MainWindow::addAudioDock(int trackNumber)
      addDockWidget(Qt::BottomDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
-     // todo : remove it - this is now done in createAudioPipelineBranch()
+     /*// todo : remove it - this is now done in createAudioPipelineBranch()
      dock = new QDockWidget (tr("Audio track #0"), this);
      audioForm = new QGLWidget(dock);
      dock->setWidget(audioForm);
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
-
-     // make maximum docks for audio tracks and add them as nessesary
-     char caption[64];
-     for (int i=0; i<MAX_AUDIO_TRACKS; i++)
-     {
-        sprintf (caption, "Audio track #%d", i);
-        QDockWidget * audioDock = new QDockWidget(tr(caption), this);
-        audioWidgets[i] = new QGLWidget(audioDock);
-        //audioWidgets[i]->hide();
-        audioDock->setWidget(audioWidgets[i]);
-
-        addDockWidget(Qt::RightDockWidgetArea, audioDock);
-        viewMenu->addAction(audioDock->toggleViewAction());
-        //audioDock->hide();
-     }
-
+*/  
      connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
  }
@@ -1079,6 +1281,7 @@ void MainWindow::addAudioDock(int trackNumber)
          }
      }*/
 
+     g_printerr ("createPipelineByCode: gst_element_set_state NULL\n");
      gst_element_set_state (pipeline, GST_STATE_NULL);
      gst_object_unref (pipeline);
 
@@ -1095,6 +1298,13 @@ void MainWindow::addAudioDock(int trackNumber)
 
  MainWindow::~MainWindow()
  {
+     // todo: where create dot-file? it should be completely linked for now
+     // todo : make sure graphviz is installed on every system that uses ths app
+     // todo : find place to paint generated PNG on dock canvas
+     GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(/*mainwindow->*/pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline_graph");
+     g_printerr ("Dtor: dot -Tpng pipeline_graph.dot > pipeline_graph.png\n");
+     system ("dot -Tpng pipeline_graph.dot > pipeline_graph.png");
+
      // todo : cleanup every time video stops
      cleanup();
  }

@@ -1,0 +1,157 @@
+digraph pipeline {
+  rankdir=LR;
+  fontname="sans";
+  fontsize="10";
+  labelloc=t;
+  nodesep=.1;
+  ranksep=.2;
+  label="<GstPipeline>\npipeline0\n[=] -> [>]";
+  node [style=filled, shape=box, fontsize="9", fontname="sans", margin="0.0,0.0"];
+  edge [labelfontsize="6", fontsize="9", fontname="monospace"];
+  
+  legend [
+    pos="0,0!",
+    margin="0.05,0.05",
+    label="Legend\lElement-States: [~] void-pending, [0] null, [-] ready, [=] paused, [>] playing\lPad-Activation: [-] none, [>] push, [<] pull\lPad-Flags: [b]locked, [f]lushing, [b]locking; upper-case is set\lPad-Task: [T] has started task, [t] has paused task\l"
+,  ];
+  subgraph cluster_scope_0_0x7f8304043a90 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstWaveScope\nscope_0\n[>]\nparent=(GstPipeline) pipeline0\nshader=((GstAudioVisualizerShader-BadGstAudioVisualizers) None)\nstyle=((GstWaveScopeStyle) draw color lines)";
+    scope_0_0x7f8304043a90_sink_0x7f830400b030 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    scope_0_0x7f8304043a90_src_0x7f830400b260 [color=black, fillcolor="#ffaaaa", label="src\n[>][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#aaffaa";
+  }
+
+  scope_0_0x7f8304043a90_src_0x7f830400b260 -> asink_0_0x7f830403e060_sink_0x7f830400a9a0 [labeldistance="10", labelangle="0", label="                                                  ", taillabel="video/x-raw\l              format: BGRx\l               width: [ 1, 2147483647 ]\l              height: [ 1, 2147483647 ]\l           framerate: [ 0/1, 2147483647/1 ]\l", headlabel="video/x-raw\l           framerate: [ 0/1, 2147483647/1 ]\l               width: [ 1, 2147483647 ]\l              height: [ 1, 2147483647 ]\l"]
+  subgraph cluster_aconvert_0_0x7f83040412a0 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstAudioConvert\naconvert_0\n[>]\nparent=(GstPipeline) pipeline0";
+    aconvert_0_0x7f83040412a0_sink_0x7f830400abd0 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    aconvert_0_0x7f83040412a0_src_0x7f830400ae00 [color=black, fillcolor="#ffaaaa", label="src\n[>][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#aaffaa";
+  }
+
+  aconvert_0_0x7f83040412a0_src_0x7f830400ae00 -> scope_0_0x7f8304043a90_sink_0x7f830400b030 [labeldistance="10", labelangle="0", label="                                                  ", taillabel="audio/x-raw\l              format: { S8, U8, S16LE, S16... }\l                rate: [ 1, 2147483647 ]\l            channels: [ 1, 2147483647 ]\l              layout: interleaved\l", headlabel="audio/x-raw\l              format: S16LE\l              layout: interleaved\l                rate: [ 8000, 96000 ]\l            channels: 2\l        channel-mask: 0x0000000000000003\l"]
+  subgraph cluster_asink_0_0x7f830403e060 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstXImageSink\nasink_0\n[-] -> [>]\nparent=(GstPipeline) pipeline0\nmax-lateness=20000000\nqos=TRUE\nwindow-width=256\nwindow-height=5";
+    asink_0_0x7f830403e060_sink_0x7f830400a9a0 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#aaaaff";
+  }
+
+  subgraph cluster_decodebin_0x1d96a50 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstDecodeBin\ndecodebin\n[-] -> [>]\nparent=(GstPipeline) pipeline0\ncaps=video/x-raw(ANY); audio/x-raw(ANY); text/x-raw; subpicture/x-dvd; subpicture/x-dvb; subpicture/x-pgs";
+    _proxypad1_0x1da0960 [color=black, fillcolor="#ddddff", label="proxypad1\n[>][bfb]", height="0.2", style="filled,solid"];
+  decodebin_0x1d96a50_sink_0x1d96cd0 -> _proxypad1_0x1da0960 [style=dashed, minlen=0]
+    decodebin_0x1d96a50_sink_0x1d96cd0 [color=black, fillcolor="#ddddff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#ffffff";
+    subgraph cluster_typefind_0x1d9a780 {
+      fontname="Bitstream Vera Sans";
+      fontsize="8";
+      style=filled;
+      color=black;
+
+      label="GstTypeFindElement\ntypefind\n[=]\nparent=(GstDecodeBin) decodebin";
+      typefind_0x1d9a780_sink_0x7f830400a540 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+      typefind_0x1d9a780_src_0x7f830400a770 [color=black, fillcolor="#ffaaaa", label="src\n[>][bfb]", height="0.2", style="filled,solid"];
+      fillcolor="#aaffaa";
+    }
+
+    _proxypad1_0x1da0960 -> typefind_0x1d9a780_sink_0x7f830400a540 [label="ANY"]
+  }
+
+  subgraph cluster_audio_queue_0x1ededf0 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstQueue\naudio_queue\n[>]\nparent=(GstPipeline) pipeline0";
+    audio_queue_0x1ededf0_sink_0x7f830400a0e0 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    audio_queue_0x1ededf0_src_0x7f830400a310 [color=black, fillcolor="#ffaaaa", label="src\n[>][bfb][T]", height="0.2", style="filled,solid"];
+    fillcolor="#aaffaa";
+  }
+
+  audio_queue_0x1ededf0_src_0x7f830400a310 -> decodebin_0x1d96a50_sink_0x1d96cd0 [label="ANY"]
+  subgraph cluster_vsink_0x1f14210 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstXvImageSink\nvsink\n[>]\nparent=(GstPipeline) pipeline0\nmax-lateness=20000000\nqos=TRUE\nlast-sample=((GstSample*) 0x1a1d2a0)\ndevice-name=\"Radeon Textured Video\"\ndouble-buffer=FALSE\ncolorkey=526352\nwindow-width=400\nwindow-height=437";
+    vsink_0x1f14210_sink_0x1d9d040 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#aaaaff";
+  }
+
+  subgraph cluster_mpeg2dec_0x1f15d40 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstMpeg2dec\nmpeg2dec\n[>]\nparent=(GstPipeline) pipeline0";
+    mpeg2dec_0x1f15d40_sink_0x1d9d270 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    mpeg2dec_0x1f15d40_src_0x1d9d4a0 [color=black, fillcolor="#ffaaaa", label="src\n[>][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#aaffaa";
+  }
+
+  mpeg2dec_0x1f15d40_src_0x1d9d4a0 -> vsink_0x1f14210_sink_0x1d9d040 [label="video/x-raw\l              format: I420\l               width: 480\l              height: 576\l  pixel-aspect-ratio: 59/36\l      interlace-mode: progressive\l         chroma-site: mpeg2\l         colorimetry: 2:4:8:3\l           framerate: 25/1\l"]
+  subgraph cluster_video_queue_0x1ede230 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstQueue\nvideo_queue\n[>]\nparent=(GstPipeline) pipeline0";
+    video_queue_0x1ede230_sink_0x1d9c9b0 [color=black, fillcolor="#aaaaff", label="sink\n[>][bfb]", height="0.2", style="filled,solid"];
+    video_queue_0x1ede230_src_0x1d9cbe0 [color=black, fillcolor="#ffaaaa", label="src\n[>][bfb][T]", height="0.2", style="filled,solid"];
+    fillcolor="#aaffaa";
+  }
+
+  video_queue_0x1ede230_src_0x1d9cbe0 -> mpeg2dec_0x1f15d40_sink_0x1d9d270 [label="video/mpeg\l         mpegversion: 2\l        systemstream: false\l"]
+  subgraph cluster_demux_0x1efe010 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstTSDemux\ndemux\n[>]\nparent=(GstPipeline) pipeline0\nparse-private-sections=TRUE";
+    demux_0x1efe010_sink_0x1d9ce10 [color=black, fillcolor="#aaaaff", label="sink\n[<][bfb][t]", height="0.2", style="filled,solid"];
+    demux_0x1efe010_video_012d_0x1d9db30 [color=black, fillcolor="#ffaaaa", label="video_012d\n[>][bfb]", height="0.2", style="filled,dotted"];
+    demux_0x1efe010_audio_012e_0x1d9dd60 [color=black, fillcolor="#ffaaaa", label="audio_012e\n[>][bfb]", height="0.2", style="filled,dotted"];
+    fillcolor="#aaffaa";
+  }
+
+  demux_0x1efe010_video_012d_0x1d9db30 -> video_queue_0x1ede230_sink_0x1d9c9b0 [label="video/mpeg\l         mpegversion: 2\l        systemstream: false\l"]
+  demux_0x1efe010_audio_012e_0x1d9dd60 -> audio_queue_0x1ededf0_sink_0x7f830400a0e0 [labeldistance="10", labelangle="0", label="                                                  ", taillabel="audio/mpeg\l         mpegversion: 1\l", headlabel="ANY"]
+  subgraph cluster_filesrc_0x1ef40d0 {
+    fontname="Bitstream Vera Sans";
+    fontsize="8";
+    style=filled;
+    color=black;
+
+    label="GstFileSrc\nfilesrc\n[>]\nparent=(GstPipeline) pipeline0\nlocation=\"/home/vq/atomic.ts\"";
+    filesrc_0x1ef40d0_src_0x1d9c0f0 [color=black, fillcolor="#ffaaaa", label="src\n[<][bfb]", height="0.2", style="filled,solid"];
+    fillcolor="#ffaaaa";
+  }
+
+  filesrc_0x1ef40d0_src_0x1d9c0f0 -> demux_0x1efe010_sink_0x1d9ce10 [labeldistance="10", labelangle="0", label="                                                  ", taillabel="ANY", headlabel="video/mpegts\l        systemstream: true\l"]
+}
