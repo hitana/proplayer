@@ -115,6 +115,7 @@ public:
         setAutoFillBackground(true);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         setMinimumHeight(80);
+        setMinimumWidth(250);
     }
 /*
     QSize sizeHint() const

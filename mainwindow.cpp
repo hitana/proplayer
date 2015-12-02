@@ -650,7 +650,7 @@ int MainWindow::createPipelineByString ()
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
         //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d ", i, i);
-        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d ", i, i);
+        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d ", i);
         pipelineString.append(audioBranch);
     }
  #elif defined(Q_OS_UNIX)
@@ -662,7 +662,6 @@ int MainWindow::createPipelineByString ()
 
     // test, works but shows garbage on top left corner
      //" ! decodebin name=dec ! queue ! xvimagesink name=vsink dec. ! tee name=t ! queue !  audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink t. ! queue ! autoaudiosink");
-
 
 
       // works but video flashes
@@ -701,10 +700,19 @@ int MainWindow::createPipelineByString ()
  " ! tsdemux name=demux demux.video_0 ! queue ! mpeg2dec ! xvimagesink name=vsink ");
     // demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink"
 */
+/*
+    // works but video flushes
     // for /home/vq/Видео/atomic.ts
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
  " ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink ");
     // demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_0
+
+    */
+    // for /home/vq/Видео/atomic.ts
+    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+    " ! decodebin name=dec ! queue ! xvimagesink name=vsink ");
+    // dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_0
+
 
     // todo : make video branch and test it
     // todo : use more stable version of gst-discoverer
@@ -712,8 +720,9 @@ int MainWindow::createPipelineByString ()
 
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
-        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);
-        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);
+        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);  // doesn't works with pad names
+        //snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // works but flushes
+        snprintf (audioBranch, 256, "dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);
         pipelineString.append(audioBranch);
     }
 
