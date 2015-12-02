@@ -649,8 +649,8 @@ int MainWindow::createPipelineByString ()
 
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
-        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d", i, i);
-        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d", i, i);
+        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d ", i, i);
+        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d ", i, i);
         pipelineString.append(audioBranch);
     }
  #elif defined(Q_OS_UNIX)
@@ -712,8 +712,8 @@ int MainWindow::createPipelineByString ()
 
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
-        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d", i, i);
-        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d", i, i);
+        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);
+        snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);
         pipelineString.append(audioBranch);
     }
 
@@ -966,8 +966,8 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
 
     tags = gst_discoverer_stream_info_get_tags (info);
     if (tags) {
-        //gst_tag_list_foreach (tags, print_tag_foreach, user_data);
-        //mainWindow->addColoredLog("", MT_NONE);
+        gst_tag_list_foreach (tags, print_tag_foreach, user_data);
+        mainWindow->addColoredLog("", MT_NONE);
     }
 }
 
@@ -1040,8 +1040,8 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
   }
 
   if (result != GST_DISCOVERER_OK) {
-      mainWindow->addColoredLog("E: This URI cannot be played ", MT_ERROR);
-      return;
+      mainWindow->addColoredLog("W: This URI cannot be played ", MT_WARNING);
+      //return;
   }
 
   /* If we got no error, show the retrieved information */
@@ -1063,8 +1063,8 @@ static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info
 
   tags = gst_discoverer_info_get_tags (info);
   if (tags) {
-      //gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
-      //mainWindow->addColoredLog("", MT_NONE);
+      gst_tag_list_foreach (tags, print_tag_foreach, (gpointer)mainWindow);
+      mainWindow->addColoredLog("", MT_NONE);
   }
 
   mainWindow->addColoredLog("I: Seekable: " +
