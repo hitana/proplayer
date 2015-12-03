@@ -8,12 +8,45 @@
  #include "OpenGL/glu.h"
 #endif
 
+//////////////////////////////////////////////////////////////////////////
+/// VideoWidget implementation
+///
+QSize VideoWidget::minimumSizeHint() const
+{
+    return QSize(50, 50);
+}
+
+QSize VideoWidget::sizeHint() const
+{
+    return QSize(400, 400);
+}
+
 WId VideoWidget::getWindowId()
 {
     return this->winId();
 }
 
-VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent) :
+VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent)
+    : QGLWidget(format, parent)
+{
+    qDebug() << "VideoWidget constructor entered";
+}
+
+VideoWidget::~VideoWidget()
+{
+    qDebug() << "VideoWidget destructor entered";
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// VideoWidget2 implementation
+///
+
+WId VideoWidget2::getWindowId()
+{
+    return this->winId();
+}
+
+VideoWidget2::VideoWidget2(const QGLFormat& format, QWidget *parent) :
     //VideoWidget(QGLFormat(QGL::DoubleBuffer | QGL::DepthBuffer | QGL::Rgba), parent),
     QGLWidget(format, parent),
     m_closing(false),
@@ -99,12 +132,12 @@ VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent) :
     qDebug() <<  "m_dataFilesDir = " << m_dataFilesDir.toUtf8().constData();
 }
 
-VideoWidget::~VideoWidget()
+VideoWidget2::~VideoWidget2()
 {
     qDebug() << "GLWidget destructor entered";
 }
 
-void VideoWidget::initVideo()
+void VideoWidget2::initVideo()
 {
     //loadVideoSlot(); // test
 
@@ -136,7 +169,7 @@ void VideoWidget::initVideo()
     //loadVideoSlot();    // vika test
 }
 
-void VideoWidget::initializeGL()
+void VideoWidget2::initializeGL()
 {
     // vika
     qWarning() << "OpenGL Versions Supported: " << QGLFormat::openGLVersionFlags();
@@ -224,11 +257,11 @@ void VideoWidget::initializeGL()
     }
 }
 
-Pipeline* VideoWidget::createPipeline(int vidIx)
+Pipeline* VideoWidget2::createPipeline(int vidIx)
 {
     return new GStreamerPipeline(vidIx, this->m_videoLoc[vidIx], SLOT(newFrame(int)), this);
 }
-
+/*
 void VideoWidget::paintEvent(QPaintEvent *event)       // here we try to draw on main video window
 {
     Q_UNUSED(event);
@@ -332,9 +365,9 @@ painter.setBrush(Qt::blue);
         m_frames = 0;
     }
     ++m_frames;*/
-}
+//}
 
-void VideoWidget::resizeGL(int wid, int ht)
+void VideoWidget2::resizeGL(int wid, int ht)
 {
     if (ht == 0) ht = 1;
     float vp = 0.8f;
@@ -357,7 +390,7 @@ void VideoWidget::resizeGL(int wid, int ht)
     this->m_projectionMatrix.frustum(-vp, vp, -vp / aspect, vp / aspect, 1.0, 50.0);
 }
 
-void VideoWidget::newFrame(int vidIx)
+void VideoWidget2::newFrame(int vidIx)
 {
     //return;
     qDebug() << "newFrame in";
@@ -543,7 +576,7 @@ void VideoWidget::newFrame(int vidIx)
     }
 }
 
-bool VideoWidget::loadNewTexture(int vidIx)
+bool VideoWidget2::loadNewTexture(int vidIx)
 {
     bool texLoaded = false;
     glBindTexture (GL_RECT_VID_TEXTURE_2D, this->m_vidTextures[vidIx].texId);
@@ -598,7 +631,7 @@ bool VideoWidget::loadNewTexture(int vidIx)
     return texLoaded;
 }
 
-void VideoWidget::pipelineFinished(int vidIx)
+void VideoWidget2::pipelineFinished(int vidIx)
 {
     this->m_vidTextures[vidIx].frameCount = 0;
 
@@ -657,12 +690,12 @@ void VideoWidget::pipelineFinished(int vidIx)
 }
 
 // Layout size
-QSize VideoWidget::minimumSizeHint() const
+QSize VideoWidget2::minimumSizeHint() const
 {
     return QSize(50, 50);
 }
 
-QSize VideoWidget::sizeHint() const
+QSize VideoWidget2::sizeHint() const
 {
     return QSize(400, 400);
 }
@@ -678,7 +711,7 @@ static int qNormalizeAngle(int angle)
     return angle;
 }
 
-void VideoWidget::animate()
+void VideoWidget2::animate()
 {
     /* Increment wrt inertia */
     if (m_rotateOn)
@@ -717,7 +750,7 @@ void VideoWidget::animate()
 }
 
 // Input events
-void VideoWidget::cycleVidShaderSlot()
+void VideoWidget2::cycleVidShaderSlot()
 {
     int lastVidDrawn = this->m_vidTextures.size() - 1;
     if (this->m_vidTextures[lastVidDrawn].effect >= VidShaderLast)
@@ -737,7 +770,7 @@ void VideoWidget::cycleVidShaderSlot()
         lastVidDrawn, this->m_vidTextures[lastVidDrawn].effect;
 }
 
-void VideoWidget::showYUVWindowSlot()
+void VideoWidget2::showYUVWindowSlot()
 {
 #ifdef ENABLE_YUV_WINDOW
  #ifdef HIDE_GL_WHEN_MODAL_OPEN
@@ -753,7 +786,7 @@ void VideoWidget::showYUVWindowSlot()
 #endif
 }
 
-void VideoWidget::loadAlphaSlot()
+void VideoWidget2::loadAlphaSlot()
 {
 #ifdef HIDE_GL_WHEN_MODAL_OPEN
     QSize currentSize = this->size();
@@ -791,7 +824,7 @@ void VideoWidget::loadAlphaSlot()
 #endif
 }
 
-void VideoWidget::rotateToggleSlot(bool toggleState)
+void VideoWidget2::rotateToggleSlot(bool toggleState)
 {
     m_rotateOn = toggleState;
 
@@ -811,7 +844,7 @@ void VideoWidget::rotateToggleSlot(bool toggleState)
     }
 }
 
-void VideoWidget::stackVidsToggleSlot(int toggleState)
+void VideoWidget2::stackVidsToggleSlot(int toggleState)
 {
     if(toggleState == Qt::Checked)
         m_stackVidQuads = true;
@@ -819,7 +852,7 @@ void VideoWidget::stackVidsToggleSlot(int toggleState)
         m_stackVidQuads = false;
 }
 
-void VideoWidget::cycleBackgroundSlot()
+void VideoWidget2::cycleBackgroundSlot()
 {
     switch( m_clearColorIndex++ )
     {
@@ -833,7 +866,7 @@ void VideoWidget::cycleBackgroundSlot()
     }
 }
 
-void VideoWidget::resetPosSlot()
+void VideoWidget2::resetPosSlot()
 {
     m_xRot = 0;
     m_yRot = 35;
@@ -845,14 +878,14 @@ void VideoWidget::resetPosSlot()
     m_scaleValue    = 1.0;
 }
 
-void VideoWidget::exitSlot()
+void VideoWidget2::exitSlot()
 {
     close();
 }
 
 
 
-void VideoWidget::mousePressEvent(QMouseEvent *event)
+void VideoWidget2::mousePressEvent(QMouseEvent *event)
 {
     m_lastPos = event->pos();
 
@@ -866,7 +899,7 @@ void VideoWidget::mousePressEvent(QMouseEvent *event)
     }
 }
 
-void VideoWidget::mouseReleaseEvent(QMouseEvent *event)
+void VideoWidget2::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton)
     {
@@ -889,7 +922,7 @@ void VideoWidget::mouseReleaseEvent(QMouseEvent *event)
     }
 }
 
-void VideoWidget::mouseMoveEvent(QMouseEvent *event)
+void VideoWidget2::mouseMoveEvent(QMouseEvent *event)
 {
     if((m_lastPos.x() != -1) && (m_lastPos.y() != -1))
     {
@@ -920,7 +953,7 @@ void VideoWidget::mouseMoveEvent(QMouseEvent *event)
     m_lastPos = event->pos();
 }
 
-void VideoWidget::keyPressEvent(QKeyEvent *e)
+void VideoWidget2::keyPressEvent(QKeyEvent *e)
 {
     switch(e->key())
     {
@@ -1004,7 +1037,7 @@ void VideoWidget::keyPressEvent(QKeyEvent *e)
     }
 }
 
-void VideoWidget::closeEvent(QCloseEvent* event)
+void VideoWidget2::closeEvent(QCloseEvent* event)
 {
     if(this->m_closing == false)
     {
@@ -1038,7 +1071,7 @@ void VideoWidget::closeEvent(QCloseEvent* event)
 }
 
 // Shader management
-void VideoWidget::setAppropriateVidShader(int vidIx)
+void VideoWidget2::setAppropriateVidShader(int vidIx)
 {
     switch(this->m_vidTextures[vidIx].colourFormat)
     {
@@ -1107,7 +1140,7 @@ void VideoWidget::setAppropriateVidShader(int vidIx)
 
 // Shader WILL be all set up for the specified video texture when this is called,
 // or else!
-void VideoWidget::setVidShaderVars(int vidIx, bool printErrors)
+void VideoWidget2::setVidShaderVars(int vidIx, bool printErrors)
 {
     // TODO: move common vars out of switch
 
@@ -1186,7 +1219,7 @@ void VideoWidget::setVidShaderVars(int vidIx, bool printErrors)
     }
 }
 
-int VideoWidget::printOpenGLError(const char *file, int line)
+int VideoWidget2::printOpenGLError(const char *file, int line)
 {
     //
     // Returns 1 if an OpenGL error occurred, 0 otherwise.

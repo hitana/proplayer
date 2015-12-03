@@ -32,6 +32,22 @@
 #include "GLES2/gl2ext.h"
 #endif
 
+
+
+class VideoWidget : public QGLWidget
+{
+    Q_OBJECT
+public:
+    explicit VideoWidget(const QGLFormat &format, QWidget *parent = 0);
+    ~VideoWidget();
+
+    QSize minimumSizeHint() const;
+    QSize sizeHint() const;
+
+    WId getWindowId();
+};
+
+
 // Handle texture extensions on different platforms with some generic
 // definitions here:
 #ifdef RECTTEX_EXT_NEEDED
@@ -126,12 +142,12 @@ typedef struct _GLShaderModule
     QGLShader::ShaderType type;
 } GLShaderModule;
 
-class VideoWidget : public QGLWidget
+class VideoWidget2 : public QGLWidget
 {
     Q_OBJECT
 public:
-    explicit VideoWidget(const QGLFormat &format, QWidget *parent = 0);
-    ~VideoWidget();
+    explicit VideoWidget2(const QGLFormat &format, QWidget *parent = 0);
+    ~VideoWidget2();
 
     virtual void initVideo();
 
@@ -171,7 +187,7 @@ public Q_SLOTS:
 protected:
     virtual void initializeGL();
     virtual Pipeline* createPipeline(int vidIx);
-    void paintEvent(QPaintEvent *event);
+    //void paintEvent(QPaintEvent *event);
     void resizeGL(int width, int height);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
