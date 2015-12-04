@@ -1287,15 +1287,20 @@ void MainWindow::addAudioDock(int trackNumber)
      QDockWidget *dock;
      dock = new QDockWidget (tr("Playlist"), this);
      playList = new QListWidget(dock);
-
      dock->setWidget(playList);
      addDockWidget(Qt::RightDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
+
+     dock = new QDockWidget (tr("Pipeline graph"), this);
+     graphViewer = new GraphViewer(dock);
+     dock->setWidget(graphViewer);
+     addDockWidget(Qt::TopDockWidgetArea , dock, Qt::Horizontal);
      viewMenu->addAction(dock->toggleViewAction());
 
      dock = new QDockWidget (tr("Codec info"), this);
      codecInfo = new QTextEdit;
      dock->setWidget(codecInfo);
-     addDockWidget(Qt::RightDockWidgetArea, dock);
+     addDockWidget(Qt::LeftDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 /*
      QTextDocument *document = codecInfo->document();
@@ -1303,12 +1308,7 @@ void MainWindow::addAudioDock(int trackNumber)
      cursor.beginEditBlock();
      cursor.insertText("Select file in playlist to get it's codec information");
      cursor.endEditBlock();
-*/
-     dock = new QDockWidget (tr("Pipeline graph"), this);
-     graphViewer = new GraphViewer(dock);
-     dock->setWidget(graphViewer);
-     addDockWidget(Qt::TopDockWidgetArea , dock, Qt::Horizontal);
-     viewMenu->addAction(dock->toggleViewAction());
+*/     
      //setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
      //setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
      //setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);

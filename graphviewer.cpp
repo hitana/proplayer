@@ -6,15 +6,39 @@ GraphViewer::GraphViewer(QWidget *parent) : QWidget(parent)
 {
     imageLabel = new QLabel;
     imageLabel->setBackgroundRole(QPalette::Base);
-    imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    imageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     imageLabel->setScaledContents(true);
+
+    QFont fontButton = font();
+    fontButton.setWeight(QFont::ExtraLight);
+    fontButton.setPointSize(ZOOM_BUTTON_FONT);
+
+    zoomInButton = new QPushButton;
+    zoomOutButton = new QPushButton;
+
+    zoomInButton->setText("+");
+    zoomInButton->setFont(fontButton);
+    zoomInButton->setFixedHeight(ZOOM_BUTTON_SIZE);
+    zoomInButton->setFixedWidth(ZOOM_BUTTON_SIZE);
+
+    zoomOutButton->setText("−");
+    zoomOutButton->setFont(fontButton);
+    zoomOutButton->setFixedHeight(ZOOM_BUTTON_SIZE);
+    zoomOutButton->setFixedWidth(ZOOM_BUTTON_SIZE);
 
     scrollArea = new QScrollArea;
     scrollArea->setBackgroundRole(QPalette::Dark);
+    scrollArea->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    scrollArea->setWidgetResizable(true);
     scrollArea->setWidget(imageLabel);
+
+    QVBoxLayout *layoutButtons = new QVBoxLayout();
+    layoutButtons->addWidget(zoomInButton);
+    layoutButtons->addWidget(zoomOutButton);
 
     QHBoxLayout *layout = new QHBoxLayout();
     layout->addWidget(scrollArea);
+    layout->addLayout(layoutButtons);
     setLayout(layout);
 
     //createActions();

@@ -6,11 +6,15 @@
 #include <QScrollBar>
 #include <QScrollArea>
 #include <QLabel>
+#include <QPushButton>
 #include <QImageReader>
 #include <QWheelEvent>
 
 #include <QDebug>
 #include <QAction>
+
+#define ZOOM_BUTTON_SIZE 40
+#define ZOOM_BUTTON_FONT 18
 
 class GraphViewer : public QWidget
 {
@@ -35,6 +39,8 @@ private:
     QLabel *imageLabel;
     QScrollArea *scrollArea;
     double scaleFactor;
+    QPushButton * zoomInButton;
+    QPushButton * zoomOutButton;
 
     QAction *zoomInAct;
     QAction *zoomOutAct;
