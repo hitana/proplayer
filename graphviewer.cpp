@@ -9,6 +9,11 @@ GraphViewer::GraphViewer(QWidget *parent) : QWidget(parent)
     imageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     imageLabel->setScaledContents(true);
 
+    imageLabel->setText("pipeline graph");
+    imageLabel->setStyleSheet("QLabel { background-color : transparent; color : grey; font: italic;}");
+    //imageLabel->setAutoFillBackground(true);
+
+
     QFont fontButton = font();
     fontButton.setWeight(QFont::ExtraLight);
     fontButton.setPointSize(ZOOM_BUTTON_FONT);
@@ -27,9 +32,9 @@ GraphViewer::GraphViewer(QWidget *parent) : QWidget(parent)
     zoomOutButton->setFixedWidth(ZOOM_BUTTON_SIZE);
 
     scrollArea = new QScrollArea;
-    scrollArea->setBackgroundRole(QPalette::Dark);
-    scrollArea->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    scrollArea->setWidgetResizable(true);
+    //scrollArea->setBackgroundRole(QPalette::Dark);
+    scrollArea->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);  // todo : hide when no image
+    //scrollArea->setWidgetResizable(true);
     scrollArea->setWidget(imageLabel);
 
     QVBoxLayout *layoutButtons = new QVBoxLayout();
@@ -40,6 +45,9 @@ GraphViewer::GraphViewer(QWidget *parent) : QWidget(parent)
     layout->addWidget(scrollArea);
     layout->addLayout(layoutButtons);
     setLayout(layout);
+
+    connect(zoomInButton, SIGNAL (clicked()),this, SLOT (zoomInAction()));
+    connect(zoomOutButton, SIGNAL (clicked()),this, SLOT (zoomOutAction()));
 
     //createActions();
     //createMenus();
