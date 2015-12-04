@@ -7,13 +7,15 @@ CONFIG += console
     asyncwaitingqueue.h \
     gstpipeline.h \
     yuvdebugwindow.h \
-    videowidget.h
+    videowidget.h \
+    graphviewer.h
  SOURCES         = main.cpp \
                    mainwindow.cpp \
     pipeline.cpp \
     gstpipeline.cpp \
     yuvdebugwindow.cpp \
-    videowidget.cpp
+    videowidget.cpp \
+    graphviewer.cpp
  RESOURCES       = dockwidgets.qrc
 
  unix {
@@ -31,6 +33,9 @@ CONFIG += console
   INCLUDEPATH +=/usr/local/lib/gstreamer-1.0/include/
   LIBS += -L/usr/local/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lgstbase-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
 
+    # add graphviz
+    INCLUDEPATH += /usr/include/graphviz
+    LIBS += -L/usr/lib/graphviz -lgvc -lcgraph -lcdt
  }
 
 macx

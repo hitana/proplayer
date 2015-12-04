@@ -46,16 +46,8 @@
 #define DEFAULT_VIDEOSINK "autovideosink"
 
 #include "mainwindow.h"
-/*
-static void print_stream_info (GstDiscovererStreamInfo *info, gint depth);
-static void print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointer user_data);
-static void print_topology (GstDiscovererStreamInfo *info, gint depth);
-static void on_discovered_cb (GstDiscoverer *discoverer, GstDiscovererInfo *info, GError *err, , MainWindow * mainWindow);
-static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow);
-*/
-/* slightly convoluted way to find a working video sink that's not a bin,
- * one could use autovideosink from gst-plugins-good instead
- */
+
+#include "gvc.h"
 
 static void on_new_decodebin_pad (GstElement *element, GstPad *pad, gpointer data);
 static void on_autoplug_continue (GstElement *decodebin, GstPad *pad, GstCaps * gstcaps, gpointer data);
@@ -102,6 +94,9 @@ GstElement * MainWindow::checkGstElement(const gchar * name)
     return NULL;
 }
 
+/* slightly convoluted way to find a working video sink that's not a bin,
+ * one could use autovideosink from gst-plugins-good instead
+ */
 GstElement * MainWindow::findVideosink()
 {
     GstElement * sink;
@@ -629,6 +624,56 @@ static void on_new_decodebin_pad (GstElement *decodebin, GstPad *pad, gpointer d
 #endif
 }
 
+// system ("dot -Tpng pipeline_graph.dot > pipeline_graph.png");
+// system ("dot -Tsvg -omygraph.svg mygraph.gv");
+int MainWindow::convertDotToPng(char * dotPath, char * pngPath)
+{
+    GVC_t* gvc;
+
+    const int maxSize = 512*1024;
+    char * graphBuffer = (char *)malloc(maxSize);
+    if (!graphBuffer){
+        g_printerr("convertDotToPng: malloc failed\n");
+        return -1;
+    }
+    memset(graphBuffer, 0, maxSize);
+
+    FILE* fp = fopen (dotPath,"r");
+    if (!fp){
+        g_printerr("convertDotToPng: ERROR opening file %s\n", dotPath);
+        free (graphBuffer);
+        return -1;
+    }
+
+    int bytesRead = fread(graphBuffer, 1, maxSize, fp);
+    g_printerr("convertDotToPng: bytesRead = %d\n", bytesRead);
+    fclose(fp);
+
+    gvc = gvContext();
+    if (!gvc)
+    {
+        g_printerr("convertDotToPng: gvContext failed\n");
+        free (graphBuffer);
+        return -1;
+    }
+
+    Agraph_t* G = agmemread (graphBuffer);
+    free (graphBuffer);
+
+    if (!G){
+        g_printerr("convertDotToPng: agread failed\n");
+        gvFreeContext(gvc);
+        return -1;
+    }
+    gvLayout (gvc, G, "dot");
+    gvRenderFilename (gvc, G, "png", pngPath);
+
+    gvFreeLayout(gvc, G);
+    agclose (G);
+    gvFreeContext(gvc);
+    return 0;
+}
+
 int MainWindow::createPipelineByString ()
 {
     if (pipeline != NULL) {
@@ -752,13 +797,19 @@ int MainWindow::createPipelineByString ()
     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)videoWidget->getWindowId());
     gst_object_unref (vsink);
 
-    gst_element_set_state (pipeline, GST_STATE_PLAYING);
-
-
     removeAudioDocks();
     for (int i=0; i<bunch.audioTracks; i++){
         addAudioDock(i);
     }
+
+    gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
+    // create, convert and show pipeline graph
+    system("export GST_DEBUG_DUMP_DOT_DIR="PIPELINE_DIR);   // todo : doesn't work, needs setting via console
+    GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, PIPELINE_PATH);
+    convertDotToPng(PIPELINE_PATH_DOT, PIPELINE_PATH_PNG);
+
+    graphViewer->loadFile(PIPELINE_PATH_PNG);
 
     return 0;
 }
@@ -1254,10 +1305,21 @@ void MainWindow::addAudioDock(int trackNumber)
      cursor.insertText("Select file in playlist to get it's codec information");
      cursor.endEditBlock();
 */
+     dock = new QDockWidget (tr("Pipeline graph"), this);
+     graphViewer = new GraphViewer(dock);
+     dock->setWidget(graphViewer);
+     addDockWidget(Qt::TopDockWidgetArea , dock, Qt::Horizontal);
+     viewMenu->addAction(dock->toggleViewAction());
+     //setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+     //setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+     //setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+     //setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+
+
      dock = new QDockWidget (tr("Messages"), this);
      messageList = new QListWidget(dock);
      dock->setWidget(messageList);
-     addDockWidget(Qt::BottomDockWidgetArea, dock);
+     addDockWidget(Qt::BottomDockWidgetArea, dock, Qt::Horizontal);
      viewMenu->addAction(dock->toggleViewAction());
 
      /*// todo : remove it - this is now done in createAudioPipelineBranch()
@@ -1266,7 +1328,8 @@ void MainWindow::addAudioDock(int trackNumber)
      dock->setWidget(audioForm);
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
-*/  
+*/
+
      connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
  }
@@ -1286,21 +1349,6 @@ void MainWindow::addAudioDock(int trackNumber)
 
  void MainWindow::cleanup()
  {
-     /*for (int i=0; i<bunch.audioTracks; i++){
-         if (bunch.tees[i] != NULL){
-             gst_element_release_request_pad (bunch.tees[i], bunch.tee_audio_sound_pad[i]);
-             gst_element_release_request_pad (bunch.tees[i], bunch.tee_audio_visual_pad[i]);
-             gst_object_unref (bunch.tee_audio_sound_pad[i]);
-             gst_object_unref (bunch.tee_audio_visual_pad[i]);
-
-             // todo : carefull
-             gst_object_unref (bunch.tees[i]);
-
-             // todo : release all other bunch elements ?
-
-         }
-     }*/
-
      g_printerr ("createPipelineByCode: gst_element_set_state NULL\n");
      gst_element_set_state (pipeline, GST_STATE_NULL);
      gst_object_unref (pipeline);
@@ -1318,13 +1366,6 @@ void MainWindow::addAudioDock(int trackNumber)
 
  MainWindow::~MainWindow()
  {
-     // todo: where create dot-file? it should be completely linked for now
-     // todo : make sure graphviz is installed on every system that uses ths app
-     // todo : find place to paint generated PNG on dock canvas
-     GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(/*mainwindow->*/pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline_graph");
-     g_printerr ("Dtor: dot -Tpng pipeline_graph.dot > pipeline_graph.png\n");
-     system ("dot -Tpng pipeline_graph.dot > pipeline_graph.png");
-
      // todo : cleanup every time video stops
      cleanup();
  }

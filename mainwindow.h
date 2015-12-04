@@ -47,14 +47,23 @@
  #include <QVideoWidget>
  #include <QLabel>
  #include <QtMultimedia>
+ #include <QWheelEvent>
 
  //#include <vlc/vlc.h>
 #include "videowidget.h"
+#include "graphviewer.h"
 
 #include <gst/pbutils/pbutils.h>
 
 //#define MAX_AUDIO_TRACKS 64
 #define MAX_AUDIO_TRACKS 4
+
+// todo : set some dir for Windows
+#define PIPELINE_DIR       "/tmp"
+//#define PIPELINE_DIR       "."
+#define PIPELINE_PATH      "pipeline_graph"
+#define PIPELINE_PATH_DOT  PIPELINE_DIR"/pipeline_graph.dot"
+#define PIPELINE_PATH_PNG  PIPELINE_DIR"/pipeline_graph.png"
 
  class QAction;
  class QListWidget;
@@ -113,7 +122,7 @@ public:
     AudioWidget (QWidget *parent) : QGLWidget(parent)
     {
         setAutoFillBackground(true);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         setMinimumHeight(80);
         setMinimumWidth(250);
     }
@@ -184,6 +193,7 @@ public:
      QTextEdit     * codecInfo;
      GstDiscoverer * discoverer;
      //QGLWidget     * audioForm;
+     GraphViewer   * graphViewer;
 
      QMenu *fileMenu;
      QMenu *editMenu;
@@ -206,6 +216,7 @@ public:
      GstElement * checkGstElement(const gchar * name);
      GstElement * findVideosink();
      int createAudioBranchElements(int index);
+     int convertDotToPng(char * dotPath, char * pngPath);
 
  protected:
      void dragEnterEvent(QDragEnterEvent *event);

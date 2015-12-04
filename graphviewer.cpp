@@ -1,15 +1,49 @@
 #include "graphviewer.h"
 
+#include <QLayout>
+
 GraphViewer::GraphViewer(QWidget *parent) : QWidget(parent)
 {
+
+QLabel * label = new QLabel();
+label->setText("Random String");
+
+imageLabel = new QLabel;
+imageLabel->setBackgroundRole(QPalette::Base);
+imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+imageLabel->setScaledContents(true);
+
+
+scrollArea = new QScrollArea;
+scrollArea->setBackgroundRole(QPalette::Dark);
+scrollArea->setWidget(imageLabel);
+
+QHBoxLayout *layout = new QHBoxLayout();
+layout->addWidget(label);
+layout->addWidget(scrollArea);
+setLayout(layout);
+
+/*
     imageLabel = new QLabel;
     imageLabel->setBackgroundRole(QPalette::Base);
     imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     imageLabel->setScaledContents(true);
 
+
     scrollArea = new QScrollArea;
     scrollArea->setBackgroundRole(QPalette::Dark);
     scrollArea->setWidget(imageLabel);
+*/
+//this->layout()->addWidget(scrollArea);
+
+    //setStyleSheet( "QWidget{ background-color : rgba( 160, 160, 160, 255); border-radius : 7px;  }" );
+    //QLayout *layout = new QLayout;
+    //QLabel *label = new QLabel(this);
+    //label->setText("Random String");
+    //layout->addWidget(label);
+    //setLayout(layout);
+
+
     //setCentralWidget(scrollArea);
 
     //createActions();
@@ -24,7 +58,8 @@ bool GraphViewer::loadFile(const QString &fileName)
     reader.setAutoTransform(true);
     const QImage image = reader.read();
     if (image.isNull()) {
-        //qDebug() << "Cannot load file " << fileName;
+        qDebug () << "loadFile: ERROR! Cannot load file " << fileName;
+
         //QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
 //                                 tr("Cannot load %1.").arg(QDir::toNativeSeparators(fileName)));
         setWindowFilePath(QString());
@@ -32,16 +67,19 @@ bool GraphViewer::loadFile(const QString &fileName)
         imageLabel->adjustSize();
         return false;
     }
+    qDebug () << "loadFile: setPixmap...";
     imageLabel->setPixmap(QPixmap::fromImage(image));
     scaleFactor = 1.0;
 
     //fitToWindowAct->setEnabled(true);
     //updateActions();
 
+    qDebug () << "loadFile: adjustSize...";
     //if (!fitToWindowAct->isChecked())
-//        imageLabel->adjustSize();
 
-    setWindowFilePath(fileName);
+        imageLabel->adjustSize();
+
+    //setWindowFilePath(fileName);
     return true;
 }
 
@@ -65,9 +103,10 @@ void GraphViewer::normalSize()
 void GraphViewer::fitToWindow()
 {
     // todo
-/*    bool fitToWindow = fitToWindowAct->isChecked();   // todo
-    scrollArea->setWidgetResizable(fitToWindow);
-    if (!fitToWindow) {
+//    bool fitToWindow = fitToWindowAct->isChecked();   // todo
+    //scrollArea->setWidgetResizable(fitToWindow);
+    scrollArea->setWidgetResizable(true);
+    /*if (!fitToWindow) {
         normalSize();
     }
     updateActions();*/

@@ -8,8 +8,8 @@
 #include <QLabel>
 #include <QImageReader>
 
-class QDebug;
-class QAction;
+#include <QDebug>
+#include <QAction>
 
 class GraphViewer : public QWidget
 {
