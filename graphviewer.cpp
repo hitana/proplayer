@@ -83,13 +83,47 @@ bool GraphViewer::loadFile(const QString &fileName)
     return true;
 }
 
+void GraphViewer::wheelEvent (QWheelEvent *event)
+{
+    qDebug () << "wheelEvent: IN.";
+    // if Ctrl pressed
+    if (event->modifiers().testFlag(Qt::ControlModifier))
+    {
+        qDebug () << "wheelEvent: Ctrl pressed.";
+        if (event->delta() > 0) {
+            qDebug () << "wheelEvent: zoomInAction...";
+            zoomInAction();
+        }
+        else if(event->delta()<0){
+            qDebug () << "wheelEvent: zoomOutAction...";
+            zoomOutAction();
+        }
+        event->accept();
+        return;
+    }
+/*
+    QPoint numPixels = event->pixelDelta();
+    QPoint numDegrees = event->angleDelta() / 8;
 
-void GraphViewer::zoomIn()
+    if (!numPixels.isNull())
+    {
+        scrollWithPixels(numPixels);
+    }
+    else if (!numDegrees.isNull())
+    {
+        QPoint numSteps = numDegrees / 15;
+        scrollWithDegrees(numSteps);
+    }
+
+    event->accept();*/
+}
+
+void GraphViewer::zoomInAction()
 {
     scaleImage(1.25);
 }
 
-void GraphViewer::zoomOut()
+void GraphViewer::zoomOutAction()
 {
     scaleImage(0.8);
 }

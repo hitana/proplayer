@@ -47,7 +47,6 @@
  #include <QVideoWidget>
  #include <QLabel>
  #include <QtMultimedia>
- #include <QWheelEvent>
 
  //#include <vlc/vlc.h>
 #include "videowidget.h"

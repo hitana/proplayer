@@ -7,6 +7,7 @@
 #include <QScrollArea>
 #include <QLabel>
 #include <QImageReader>
+#include <QWheelEvent>
 
 #include <QDebug>
 #include <QAction>
@@ -20,8 +21,8 @@ public:
     bool loadFile(const QString &);
 
 private slots:
-    void zoomIn();
-    void zoomOut();
+    void zoomInAction();
+    void zoomOutAction();
     void normalSize();
     void fitToWindow();
 
@@ -43,6 +44,8 @@ private:
 signals:
 
 public slots:
+protected:
+    void wheelEvent (QWheelEvent * event);
 };
 
 #endif // GRAPHVIEWER_H
