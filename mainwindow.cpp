@@ -783,7 +783,6 @@ int MainWindow::createPipelineByString ()
     addColoredLog("I: Pipeline = " + pipelineString, MT_DEBUG);
     qDebug() << "I: Pipeline = " << pipelineChars;
 
-    // todo : seems glimagesink plays i-frames only
     pipeline = gst_parse_launch(pipelineChars, NULL);
     if (!pipeline) {
         addColoredLog("E: createPipelineByString: gst_parse_launch failed", MT_DEBUG);

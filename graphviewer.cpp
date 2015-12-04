@@ -4,47 +4,18 @@
 
 GraphViewer::GraphViewer(QWidget *parent) : QWidget(parent)
 {
-
-QLabel * label = new QLabel();
-label->setText("Random String");
-
-imageLabel = new QLabel;
-imageLabel->setBackgroundRole(QPalette::Base);
-imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-imageLabel->setScaledContents(true);
-
-
-scrollArea = new QScrollArea;
-scrollArea->setBackgroundRole(QPalette::Dark);
-scrollArea->setWidget(imageLabel);
-
-QHBoxLayout *layout = new QHBoxLayout();
-layout->addWidget(label);
-layout->addWidget(scrollArea);
-setLayout(layout);
-
-/*
     imageLabel = new QLabel;
     imageLabel->setBackgroundRole(QPalette::Base);
     imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     imageLabel->setScaledContents(true);
 
-
     scrollArea = new QScrollArea;
     scrollArea->setBackgroundRole(QPalette::Dark);
     scrollArea->setWidget(imageLabel);
-*/
-//this->layout()->addWidget(scrollArea);
 
-    //setStyleSheet( "QWidget{ background-color : rgba( 160, 160, 160, 255); border-radius : 7px;  }" );
-    //QLayout *layout = new QLayout;
-    //QLabel *label = new QLabel(this);
-    //label->setText("Random String");
-    //layout->addWidget(label);
-    //setLayout(layout);
-
-
-    //setCentralWidget(scrollArea);
+    QHBoxLayout *layout = new QHBoxLayout();
+    layout->addWidget(scrollArea);
+    setLayout(layout);
 
     //createActions();
     //createMenus();
@@ -85,17 +56,13 @@ bool GraphViewer::loadFile(const QString &fileName)
 
 void GraphViewer::wheelEvent (QWheelEvent *event)
 {
-    qDebug () << "wheelEvent: IN.";
     // if Ctrl pressed
     if (event->modifiers().testFlag(Qt::ControlModifier))
     {
-        qDebug () << "wheelEvent: Ctrl pressed.";
         if (event->delta() > 0) {
-            qDebug () << "wheelEvent: zoomInAction...";
             zoomInAction();
         }
         else if(event->delta()<0){
-            qDebug () << "wheelEvent: zoomOutAction...";
             zoomOutAction();
         }
         event->accept();
