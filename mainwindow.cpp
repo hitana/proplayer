@@ -133,6 +133,7 @@ GstElement * MainWindow::findVideosink()
      createStatusBar();
      createCentralWidget();
      createDockWindows();
+     createYuvWidget();
      //createAudioDock();
      createDiscoverer();
      //createVlc();
@@ -755,11 +756,10 @@ int MainWindow::createPipelineByString ()
     */
     // for /home/vq/Видео/atomic.ts
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-    " ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?
-    // dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_0
+    //" ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?      // was here, okay
 
+    " ! decodebin name=dec ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink "); // test fakesink
 
-    // todo : make video branch and test it
     // todo : use more stable version of gst-discoverer
     // and use it for demux selection and pipeline creation
 
@@ -1345,6 +1345,7 @@ void MainWindow::addAudioDock(int trackNumber)
      dock->setWidget(codecInfo);
      addDockWidget(Qt::LeftDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
+
 /*
      QTextDocument *document = codecInfo->document();
      QTextCursor cursor(document);
@@ -1374,6 +1375,22 @@ void MainWindow::addAudioDock(int trackNumber)
 
      connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
+ }
+
+ void MainWindow::createYuvWidget()
+ {
+     QDockWidget *dock;
+     dock = new QDockWidget (tr("YUV view"), this);
+
+     QGLFormat glFormat;
+     glFormat.setVersion (2, 1);
+     glFormat.setProfile (QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
+     glFormat.setSampleBuffers (true);
+
+     yuvWidget = new YuvWidget(glFormat, this);
+     dock->setWidget(yuvWidget);
+     addDockWidget(Qt::LeftDockWidgetArea, dock);
+     viewMenu->addAction(dock->toggleViewAction());
  }
 
  void MainWindow::createVlc()

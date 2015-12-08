@@ -8,14 +8,18 @@ CONFIG += console
     gstpipeline.h \
     yuvdebugwindow.h \
     videowidget.h \
-    graphviewer.h
+    graphviewer.h \
+    yuvwidget.h \
+    audiowidget.h
  SOURCES         = main.cpp \
                    mainwindow.cpp \
     pipeline.cpp \
     gstpipeline.cpp \
     yuvdebugwindow.cpp \
     videowidget.cpp \
-    graphviewer.cpp
+    graphviewer.cpp \
+    yuvwidget.cpp \
+    audiowidget.cpp
  RESOURCES       = dockwidgets.qrc
 
  unix {

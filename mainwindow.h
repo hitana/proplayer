@@ -51,11 +51,12 @@
  //#include <vlc/vlc.h>
 #include "videowidget.h"
 #include "graphviewer.h"
+#include "yuvwidget.h"
+#include "audiowidget.h"
 
 #include <gst/pbutils/pbutils.h>
 
-//#define MAX_AUDIO_TRACKS 64
-#define MAX_AUDIO_TRACKS 4
+#define MAX_AUDIO_TRACKS 64
 
 // todo : set some dir for Windows
 #define PIPELINE_DIR       "/tmp"
@@ -115,34 +116,6 @@
 
  } AudioPipeline;
 
-class AudioWidget : public QGLWidget
-{
-public:
-    AudioWidget (QWidget *parent) : QGLWidget(parent)
-    {
-        setAutoFillBackground(true);
-        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-        setMinimumHeight(80);
-        setMinimumWidth(250);
-    }
-/*
-    QSize sizeHint() const
-    {
-        //return QSize(300, 150);
-        if (this->height() < 100){
-            return QSize(this->width(), 100);
-        }
-        return QSize(this->width(), this->width());
-    }
-    QSize minimumSizeHint()
-    {
-        if (this->height() < 100){
-            return QSize(this->width(), 100);
-        }
-        return QSize(200, 100);
-    }*/
-};
-
  class MainWindow : public QMainWindow
  {
      Q_OBJECT
@@ -152,7 +125,7 @@ public:
      ~MainWindow();
 
      // todo : remove from public
-     GstElement * pipeline;
+     GstElement    * pipeline;
      GMainLoop     * loop;
      QListWidget   * messageList;
      BunchOfGstElements bunch;
@@ -180,6 +153,7 @@ public:
      void createStatusBar();
      void createDockWindows();
      void createCentralWidget();
+     void createYuvWidget();
      void createDiscoverer();
      void createVlc();
 
@@ -198,6 +172,7 @@ public:
      QTextEdit     * codecInfo;
      GstDiscoverer * discoverer;
      GraphViewer   * graphViewer;
+     YuvWidget     * yuvWidget;
 
      QMenu *fileMenu;
      QMenu *editMenu;
