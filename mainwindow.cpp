@@ -755,7 +755,7 @@ int MainWindow::createPipelineByString ()
     */
     // for /home/vq/Видео/atomic.ts
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-    " ! decodebin name=dec ! queue ! xvimagesink name=vsink ");
+    " ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?
     // dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_0
 
 
@@ -767,7 +767,7 @@ int MainWindow::createPipelineByString ()
         char audioBranch[256];
         //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);  // doesn't works with pad names
         //snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // works but flushes
-        snprintf (audioBranch, 256, "dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);
+        snprintf (audioBranch, 256, "dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // todo : async=false ?
         pipelineString.append(audioBranch);
     }
 
@@ -829,7 +829,14 @@ void MainWindow::setAudioOverlays()
 void MainWindow::startPlaying()
 {
     if (!pipeline) return;
+
     gst_element_set_state (pipeline, GST_STATE_PLAYING);
+}
+
+void MainWindow::pausePlaying()
+{
+    if (!pipeline) return;
+    gst_element_set_state (pipeline, GST_STATE_PAUSED);
 }
 
 void MainWindow::stopPlaying()

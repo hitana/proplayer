@@ -188,6 +188,7 @@ public:
      void dumpAndShowPipeline();
      void startPlaying();
      void stopPlaying();
+     void pausePlaying();
      void setVideoOverlays();
      void setAudioOverlays();
 

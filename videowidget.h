@@ -34,21 +34,23 @@
 #include "GLES2/gl2ext.h"
 #endif
 
-#define PLAY_BUTTON_FONT 14
-#define PLAY_BUTTON_W 25
-#define PLAY_BUTTON_H 15
+#define PLAY_BUTTON_FONT 12
+#define PLAY_BUTTON_W 55
+#define PLAY_BUTTON_H 25
 
 class VideoWidget : public QGLWidget
 {
     Q_OBJECT
 private:
     QPushButton * buttonPlay;
+    QPushButton * buttonPause;
     QPushButton * buttonStop;
 
     GstElement * pipeline;
 
 private slots:
     void playAction();
+    void pauseAction();
     void stopAction();
 public:
     explicit VideoWidget(const QGLFormat &format, QWidget *parent = 0);

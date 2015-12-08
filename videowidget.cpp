@@ -37,11 +37,17 @@ VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent)
 
     buttonPlay = new QPushButton;
     buttonStop = new QPushButton;
+    buttonPause = new QPushButton;
 
     buttonPlay->setText("play");
     buttonPlay->setFont(fontButton);
     buttonPlay->setFixedHeight(PLAY_BUTTON_H);
     buttonPlay->setFixedWidth(PLAY_BUTTON_W);
+
+    buttonPause->setText("pause");
+    buttonPause->setFont(fontButton);
+    buttonPause->setFixedHeight(PLAY_BUTTON_H);
+    buttonPause->setFixedWidth(PLAY_BUTTON_W);
 
     buttonStop->setText("stop");
     buttonStop->setFont(fontButton);
@@ -50,6 +56,7 @@ VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent)
 
     QHBoxLayout *layoutButtons = new QHBoxLayout();
     layoutButtons->addWidget(buttonPlay);
+    layoutButtons->addWidget(buttonPause);
     layoutButtons->addWidget(buttonStop);
 
     QHBoxLayout *layout = new QHBoxLayout(this);
@@ -58,6 +65,7 @@ VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent)
 
     connect(buttonPlay, SIGNAL (clicked()),this, SLOT (playAction()));
     connect(buttonStop, SIGNAL (clicked()),this, SLOT (stopAction()));
+    connect(buttonPause, SIGNAL (clicked()),this, SLOT (pauseAction()));
 }
 
 void VideoWidget::setPipelinePtr(GstElement * p)
@@ -67,9 +75,17 @@ void VideoWidget::setPipelinePtr(GstElement * p)
 
 void VideoWidget::playAction()
 {
+
     if (pipeline == NULL) return;
     gst_element_set_state (pipeline, GST_STATE_PLAYING);
     qDebug() << "VideoWidget playAction OK";
+}
+
+void VideoWidget::pauseAction()
+{
+    if (pipeline == NULL) return;
+    gst_element_set_state (pipeline, GST_STATE_PAUSED);
+    qDebug() << "VideoWidget pauseAction OK";
 }
 
 void VideoWidget::stopAction()
