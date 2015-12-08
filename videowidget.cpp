@@ -27,9 +27,56 @@ WId VideoWidget::getWindowId()
 }
 
 VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent)
-    : QGLWidget(format, parent)
+    : QGLWidget(format, parent), pipeline (NULL)
 {
     qDebug() << "VideoWidget constructor entered";
+
+    QFont fontButton = font();
+    fontButton.setWeight(QFont::ExtraLight);
+    fontButton.setPointSize(PLAY_BUTTON_FONT);
+
+    buttonPlay = new QPushButton;
+    buttonStop = new QPushButton;
+
+    buttonPlay->setText("play");
+    buttonPlay->setFont(fontButton);
+    buttonPlay->setFixedHeight(PLAY_BUTTON_H);
+    buttonPlay->setFixedWidth(PLAY_BUTTON_W);
+
+    buttonStop->setText("stop");
+    buttonStop->setFont(fontButton);
+    buttonStop->setFixedHeight(PLAY_BUTTON_H);
+    buttonStop->setFixedWidth(PLAY_BUTTON_W);
+
+    QHBoxLayout *layoutButtons = new QHBoxLayout();
+    layoutButtons->addWidget(buttonPlay);
+    layoutButtons->addWidget(buttonStop);
+
+    QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->addLayout(layoutButtons);
+    setLayout(layout);
+
+    connect(buttonPlay, SIGNAL (clicked()),this, SLOT (playAction()));
+    connect(buttonStop, SIGNAL (clicked()),this, SLOT (stopAction()));
+}
+
+void VideoWidget::setPipelinePtr(GstElement * p)
+{
+    pipeline = p;
+}
+
+void VideoWidget::playAction()
+{
+    if (pipeline == NULL) return;
+    gst_element_set_state (pipeline, GST_STATE_PLAYING);
+    qDebug() << "VideoWidget playAction OK";
+}
+
+void VideoWidget::stopAction()
+{
+    if (pipeline == NULL) return;
+    gst_element_set_state (pipeline, GST_STATE_NULL);
+    qDebug() << "VideoWidget stopAction OK";
 }
 
 VideoWidget::~VideoWidget()

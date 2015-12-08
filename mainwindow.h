@@ -185,13 +185,17 @@ public:
 
      void addAudioDock(int trackNumber);
      void removeAudioDocks();
+     void dumpAndShowPipeline();
+     void startPlaying();
+     void stopPlaying();
+     void setVideoOverlays();
+     void setAudioOverlays();
 
      void insertMediaInfo (const char * uri);
 
      QListWidget   * playList;
      QTextEdit     * codecInfo;
      GstDiscoverer * discoverer;
-     //QGLWidget     * audioForm;
      GraphViewer   * graphViewer;
 
      QMenu *fileMenu;

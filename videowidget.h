@@ -17,6 +17,8 @@
 #include <QTime>
 #include <QPaintEvent>
 
+#include <QPushButton>
+
 #include <iostream>
 
 #include "pipeline.h"
@@ -32,11 +34,22 @@
 #include "GLES2/gl2ext.h"
 #endif
 
-
+#define PLAY_BUTTON_FONT 14
+#define PLAY_BUTTON_W 25
+#define PLAY_BUTTON_H 15
 
 class VideoWidget : public QGLWidget
 {
     Q_OBJECT
+private:
+    QPushButton * buttonPlay;
+    QPushButton * buttonStop;
+
+    GstElement * pipeline;
+
+private slots:
+    void playAction();
+    void stopAction();
 public:
     explicit VideoWidget(const QGLFormat &format, QWidget *parent = 0);
     ~VideoWidget();
@@ -45,6 +58,8 @@ public:
     QSize sizeHint() const;
 
     WId getWindowId();
+
+    void setPipelinePtr(GstElement * p);
 };
 
 

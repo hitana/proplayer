@@ -789,28 +789,65 @@ int MainWindow::createPipelineByString ()
         qDebug() << "E: createPipelineByString: gst_parse_launch failed\n";
         return -1;
     }
+    videoWidget->setPipelinePtr(pipeline);
+
+    setVideoOverlays();
+    setAudioOverlays();
+
+    startPlaying();
+
+    dumpAndShowPipeline();
+
+    return 0;
+}
+
+void MainWindow::setVideoOverlays()
+{
+    if (!pipeline) return;
+    // todo : set overlays for every video stream, eg., every bitrate in HLS
+
+    // todo : remove all video widgets and create dummy interface when no source is open
+
     GstElement * vsink = gst_bin_get_by_name (GST_BIN (pipeline), "vsink");
     if (!vsink) {
-        return -1;
+        return;
     }
     gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (vsink), (guintptr)videoWidget->getWindowId());
     gst_object_unref (vsink);
+}
+
+void MainWindow::setAudioOverlays()
+{
+    if (!pipeline) return;
 
     removeAudioDocks();
     for (int i=0; i<bunch.audioTracks; i++){
         addAudioDock(i);
     }
+}
 
+void MainWindow::startPlaying()
+{
+    if (!pipeline) return;
     gst_element_set_state (pipeline, GST_STATE_PLAYING);
+}
 
-    // create, convert and show pipeline graph
-    system("export GST_DEBUG_DUMP_DOT_DIR="PIPELINE_DIR);   // todo : doesn't work, needs setting via console
+void MainWindow::stopPlaying()
+{
+    if (!pipeline) return;
+    gst_element_set_state (pipeline, GST_STATE_NULL);
+}
+
+void MainWindow::dumpAndShowPipeline()
+{
+    // todo : doesn't work, needs manual setting via console
+    //system("export GST_DEBUG_DUMP_DOT_DIR="PIPELINE_DIR);
+
     GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, PIPELINE_PATH);
+
     convertDotToPng(PIPELINE_PATH_DOT, PIPELINE_PATH_PNG);
 
     graphViewer->loadFile(PIPELINE_PATH_PNG);
-
-    return 0;
 }
 
 int MainWindow::createPipelineByCode ()
@@ -902,7 +939,7 @@ int MainWindow::createPipelineByCode ()
     //gst_bus_add_watch(bus, (GstBusFunc) bus_call, this);
     //gst_object_unref(bus);
 
-    gst_element_set_state (pipeline, GST_STATE_PLAYING);
+    startPlaying();
 
     //gst_video_overlay_set_window_handle (GST_VIDEO_OVERLAY (bunch.xvimagesink), (guintptr)glWidget->getWindowId());
 
@@ -1258,7 +1295,6 @@ void MainWindow::addAudioDock(int trackNumber)
     sprintf (caption, "Audio track #%d", trackNumber);
 
     QDockWidget * audioDock = new QDockWidget(tr(caption), this);
-    //QGLWidget * audioWidget = new QGLWidget(audioDock);
     AudioWidget * audioWidget = new AudioWidget(audioDock);
 
     audioDock->setWidget(audioWidget);
