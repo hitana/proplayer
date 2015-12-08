@@ -60,6 +60,7 @@ VideoWidget::VideoWidget(const QGLFormat& format, QWidget *parent)
     layoutButtons->addWidget(buttonStop);
 
     QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
     layout->addLayout(layoutButtons);
     setLayout(layout);
 
