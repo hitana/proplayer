@@ -838,6 +838,9 @@ static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * p
             return;
         }
 
+        mainWindow->videoInfo.yuvCoeffW = 1.0;
+        mainWindow->videoInfo.yuvCoeffH = 1.0;
+
         gst_video_info_init (&vinfo);
         gst_video_info_from_caps (&vinfo, caps);
 
@@ -874,125 +877,90 @@ static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * p
         qDebug() << "shift=" << f.info.finfo->shift[0] << " depth" << f.info.finfo->depth[0] << " plane=" << f.info.finfo->plane[0] << " poffset=" << f.info.finfo->poffset[0];
         qDebug() << "w_sub=" << f.info.finfo->w_sub[0] << " h_sub=" << f.info.finfo->h_sub[0] << " pack_lines=" <<  f.info.finfo->pack_lines <<  " unpack format=" << f.info.finfo->unpack_format;
 
-        switch (mainWindow->videoInfo.videoFormat)
+        switch(mainWindow->videoInfo.videoFormat)
         {
-        case GST_VIDEO_FORMAT_YV12:
-            //format = CLUTTER_GST_YV12;
-            qDebug() << "GST_VIDEO_FORMAT_YV12";
-            break;
         case GST_VIDEO_FORMAT_I420:
-            //format = CLUTTER_GST_I420;
-            qDebug() << "GST_VIDEO_FORMAT_I420";
+            mainWindow->videoInfo.yuvCoeffW = 1.0;
+            mainWindow->videoInfo.yuvCoeffH = 1.5;
             break;
+        case GST_VIDEO_FORMAT_UYVY:
+            mainWindow->videoInfo.yuvCoeffW = 2.0;
+            mainWindow->videoInfo.yuvCoeffH = 1.0;
+            break;
+        // todo:
+        case GST_VIDEO_FORMAT_YV12:
+        case GST_VIDEO_FORMAT_YUY2:
         case GST_VIDEO_FORMAT_AYUV:
-            //format = CLUTTER_GST_AYUV;
-            qDebug() << "GST_VIDEO_FORMAT_AYUV";
-            //bgr = FALSE;
-            break;
-        case GST_VIDEO_FORMAT_RGB:
-            //format = CLUTTER_GST_RGB24;
-            qDebug() << "GST_VIDEO_FORMAT_RGB";
-            //bgr = FALSE;
-            break;
-        case GST_VIDEO_FORMAT_BGR:
-            //format = CLUTTER_GST_RGB24;
-            qDebug() << "GST_VIDEO_FORMAT_BGR";
-            //bgr = TRUE;
-            break;
+        case GST_VIDEO_FORMAT_RGBx:
+        case GST_VIDEO_FORMAT_BGRx:
+        case GST_VIDEO_FORMAT_xRGB:
+        case GST_VIDEO_FORMAT_xBGR:
         case GST_VIDEO_FORMAT_RGBA:
-            //format = CLUTTER_GST_RGB32;
-            qDebug() << "GST_VIDEO_FORMAT_RGBA";
-            //bgr = FALSE;
-            break;
         case GST_VIDEO_FORMAT_BGRA:
-            //format = CLUTTER_GST_RGB32;
-            qDebug() << "GST_VIDEO_FORMAT_BGRA";
-            //bgr = TRUE;
+        case GST_VIDEO_FORMAT_ARGB:
+        case GST_VIDEO_FORMAT_ABGR:
+        case GST_VIDEO_FORMAT_RGB:
+        case GST_VIDEO_FORMAT_BGR:
+        case GST_VIDEO_FORMAT_Y41B:
+        case GST_VIDEO_FORMAT_Y42B:
+        case GST_VIDEO_FORMAT_YVYU:
+        case GST_VIDEO_FORMAT_Y444:
+        case GST_VIDEO_FORMAT_v210:
+        case GST_VIDEO_FORMAT_v216:
+        case GST_VIDEO_FORMAT_NV12:
+        case GST_VIDEO_FORMAT_NV21:
+        case GST_VIDEO_FORMAT_GRAY8:
+        case GST_VIDEO_FORMAT_GRAY16_BE:
+        case GST_VIDEO_FORMAT_GRAY16_LE:
+        case GST_VIDEO_FORMAT_v308:
+        case GST_VIDEO_FORMAT_RGB16:
+        case GST_VIDEO_FORMAT_BGR16:
+        case GST_VIDEO_FORMAT_RGB15:
+        case GST_VIDEO_FORMAT_BGR15:
+        case GST_VIDEO_FORMAT_UYVP:
+        case GST_VIDEO_FORMAT_A420:
+        case GST_VIDEO_FORMAT_RGB8P:
+        case GST_VIDEO_FORMAT_YUV9:
+        case GST_VIDEO_FORMAT_YVU9:
+        case GST_VIDEO_FORMAT_IYU1:
+        case GST_VIDEO_FORMAT_ARGB64:
+        case GST_VIDEO_FORMAT_AYUV64:
+        case GST_VIDEO_FORMAT_r210:
+        case GST_VIDEO_FORMAT_I420_10BE:
+        case GST_VIDEO_FORMAT_I420_10LE:
+        case GST_VIDEO_FORMAT_I422_10BE:
+        case GST_VIDEO_FORMAT_I422_10LE:
+        case GST_VIDEO_FORMAT_Y444_10BE:
+        case GST_VIDEO_FORMAT_Y444_10LE:
+        case GST_VIDEO_FORMAT_GBR:
+        case GST_VIDEO_FORMAT_GBR_10BE:
+        case GST_VIDEO_FORMAT_GBR_10LE:
+        case GST_VIDEO_FORMAT_NV16:
+        case GST_VIDEO_FORMAT_NV24:
+        case GST_VIDEO_FORMAT_ENCODED:
+        case GST_VIDEO_FORMAT_UNKNOWN:
             break;
-        default:
-            break;
+        default: break;
         }
 
         gchar dockCaption[PATH_MAX];
         snprintf (dockCaption, PATH_MAX, "Raw output format: %s", gst_video_format_to_string (mainWindow->videoInfo.videoFormat));
         mainWindow->yuvDock->setWindowTitle(dockCaption);
+        qDebug() << "on_fakesink_buffer: " << dockCaption;
+
+        qDebug() << "on_fakesink_buffer: coeffW = " << mainWindow->videoInfo.yuvCoeffW << ", coeffH = " << mainWindow->videoInfo.yuvCoeffH;
 
         mainWindow->videoInfo.isValid = TRUE;
     }
 
     GstMapInfo info;
     QImage yuvImage;
-    gst_buffer_map (buf, &info, (GstMapFlags)(GST_MAP_READ));
 
-    switch(mainWindow->videoInfo.videoFormat)
-    {
-    case GST_VIDEO_FORMAT_I420:
-        yuvImage = QImage(info.data,
-                          mainWindow->videoInfo.frameWidth,
-                          mainWindow->videoInfo.frameHeight*1.5f,
-                          QImage::Format_Indexed8);
-        break;
-    case GST_VIDEO_FORMAT_UYVY:
-        yuvImage = QImage(info.data,
-                   mainWindow->videoInfo.frameWidth*2,
-                   mainWindow->videoInfo.frameHeight,
-                   QImage::Format_Indexed8);
-        break;
-    // todo:
-    case GST_VIDEO_FORMAT_YV12:
-    case GST_VIDEO_FORMAT_YUY2:
-    case GST_VIDEO_FORMAT_AYUV:
-    case GST_VIDEO_FORMAT_RGBx:
-    case GST_VIDEO_FORMAT_BGRx:
-    case GST_VIDEO_FORMAT_xRGB:
-    case GST_VIDEO_FORMAT_xBGR:
-    case GST_VIDEO_FORMAT_RGBA:
-    case GST_VIDEO_FORMAT_BGRA:
-    case GST_VIDEO_FORMAT_ARGB:
-    case GST_VIDEO_FORMAT_ABGR:
-    case GST_VIDEO_FORMAT_RGB:
-    case GST_VIDEO_FORMAT_BGR:
-    case GST_VIDEO_FORMAT_Y41B:
-    case GST_VIDEO_FORMAT_Y42B:
-    case GST_VIDEO_FORMAT_YVYU:
-    case GST_VIDEO_FORMAT_Y444:
-    case GST_VIDEO_FORMAT_v210:
-    case GST_VIDEO_FORMAT_v216:
-    case GST_VIDEO_FORMAT_NV12:
-    case GST_VIDEO_FORMAT_NV21:
-    case GST_VIDEO_FORMAT_GRAY8:
-    case GST_VIDEO_FORMAT_GRAY16_BE:
-    case GST_VIDEO_FORMAT_GRAY16_LE:
-    case GST_VIDEO_FORMAT_v308:
-    case GST_VIDEO_FORMAT_RGB16:
-    case GST_VIDEO_FORMAT_BGR16:
-    case GST_VIDEO_FORMAT_RGB15:
-    case GST_VIDEO_FORMAT_BGR15:
-    case GST_VIDEO_FORMAT_UYVP:
-    case GST_VIDEO_FORMAT_A420:
-    case GST_VIDEO_FORMAT_RGB8P:
-    case GST_VIDEO_FORMAT_YUV9:
-    case GST_VIDEO_FORMAT_YVU9:
-    case GST_VIDEO_FORMAT_IYU1:
-    case GST_VIDEO_FORMAT_ARGB64:
-    case GST_VIDEO_FORMAT_AYUV64:
-    case GST_VIDEO_FORMAT_r210:
-    case GST_VIDEO_FORMAT_I420_10BE:
-    case GST_VIDEO_FORMAT_I420_10LE:
-    case GST_VIDEO_FORMAT_I422_10BE:
-    case GST_VIDEO_FORMAT_I422_10LE:
-    case GST_VIDEO_FORMAT_Y444_10BE:
-    case GST_VIDEO_FORMAT_Y444_10LE:
-    case GST_VIDEO_FORMAT_GBR:
-    case GST_VIDEO_FORMAT_GBR_10BE:
-    case GST_VIDEO_FORMAT_GBR_10LE:
-    case GST_VIDEO_FORMAT_NV16:
-    case GST_VIDEO_FORMAT_NV24:
-    case GST_VIDEO_FORMAT_ENCODED:
-    case GST_VIDEO_FORMAT_UNKNOWN:
-        break;
-    default: break;
-    }
+    gst_buffer_map (buf, &info, (GstMapFlags)(GST_MAP_READ));
+    yuvImage = QImage(info.data,
+                      mainWindow->videoInfo.frameWidth * mainWindow->videoInfo.yuvCoeffW,
+                      mainWindow->videoInfo.frameHeight * mainWindow->videoInfo.yuvCoeffH,
+                      QImage::Format_Indexed8);
     gst_buffer_unmap(buf, &info);
     // todo: unref ?
 
@@ -1015,7 +983,8 @@ static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * p
 */
     //painter.end();
 
-    mainWindow->yuvWidget->imageLabel->setPixmap(overlayYuv);
+    mainWindow->yuvWidget->setPixmap(overlayYuv);   // todo : doesnot keep AR also
+    //mainWindow->yuvWidget->imageLabel->setPixmap(overlayYuv); // ok, but breaks aspect ratio
 }
 
 void MainWindow::setVideoOverlays()

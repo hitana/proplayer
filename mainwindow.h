@@ -142,6 +142,8 @@ typedef struct _VideoInfo
     int hSub;
     int packLines;
 
+    double yuvCoeffW;
+    double yuvCoeffH;
     // todo : add all useful fields
 
 } VideoInfo;
