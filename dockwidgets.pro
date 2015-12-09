@@ -6,7 +6,6 @@ CONFIG += console
     pipeline.h \
     asyncwaitingqueue.h \
     gstpipeline.h \
-    yuvdebugwindow.h \
     videowidget.h \
     graphviewer.h \
     yuvwidget.h \
@@ -15,7 +14,6 @@ CONFIG += console
                    mainwindow.cpp \
     pipeline.cpp \
     gstpipeline.cpp \
-    yuvdebugwindow.cpp \
     videowidget.cpp \
     graphviewer.cpp \
     yuvwidget.cpp \
