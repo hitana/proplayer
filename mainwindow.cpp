@@ -136,8 +136,7 @@ GstElement * MainWindow::findVideosink()
      createStatusBar();
      createCentralWidget();
      createDockWindows();
-     createYuvWidget();
-     //createAudioDock();
+     createYuvDock();
      createDiscoverer();
      //createVlc();
 
@@ -146,6 +145,8 @@ GstElement * MainWindow::findVideosink()
      setUnifiedTitleAndToolBarOnMac(true);
 
      setAcceptDrops(true);
+
+     //QMainWindow::showFullScreen();   // shows incorrect
  }
 
  void MainWindow::addColoredLog(const QString &line, MessageType type)
@@ -168,7 +169,6 @@ GstElement * MainWindow::findVideosink()
      default:
          break;
      }
-     //listItem->setForeground(Qt::red); // sets red text
      listItem->setBackground (color);
      messageList->addItem (listItem);
      messageList->show();
@@ -793,7 +793,7 @@ int MainWindow::createPipelineByString ()
     }
     videoWidget->setPipelinePtr(pipeline);
 
-    setFakesinkCallbacks(); // test, fails!
+    setFakesinkCallbacks();
 
     setVideoOverlays();
     setAudioOverlays();
@@ -912,6 +912,11 @@ static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * p
         default:
             break;
         }
+
+        gchar dockCaption[PATH_MAX];
+        snprintf (dockCaption, PATH_MAX, "Raw output format: %s", gst_video_format_to_string (mainWindow->videoInfo.videoFormat));
+        mainWindow->yuvDock->setWindowTitle(dockCaption);
+
         mainWindow->videoInfo.isValid = TRUE;
     }
 
@@ -1546,7 +1551,7 @@ void MainWindow::addAudioDock(int trackNumber)
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
-     dock = new QDockWidget (tr("Pipeline graph"), this);
+     dock = new QDockWidget ("Graph", this);
      graphViewer = new GraphViewer(dock);
      dock->setWidget(graphViewer);
      addDockWidget(Qt::TopDockWidgetArea , dock, Qt::Horizontal);
@@ -1589,20 +1594,13 @@ void MainWindow::addAudioDock(int trackNumber)
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
  }
 
- void MainWindow::createYuvWidget()
+ void MainWindow::createYuvDock()
  {
-     QDockWidget *dock;
-     dock = new QDockWidget (tr("YUV view"), this);
-
-     QGLFormat glFormat;
-     glFormat.setVersion (2, 1);
-     glFormat.setProfile (QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
-     glFormat.setSampleBuffers (true);
-
-     yuvWidget = new YuvWidget(glFormat, this);
-     dock->setWidget(yuvWidget);
-     addDockWidget(Qt::LeftDockWidgetArea, dock);
-     viewMenu->addAction(dock->toggleViewAction());
+     yuvDock = new QDockWidget ("Raw output", this);
+     yuvWidget = new YuvWidget(this);
+     yuvDock->setWidget(yuvWidget);
+     addDockWidget(Qt::LeftDockWidgetArea, yuvDock);
+     viewMenu->addAction(yuvDock->toggleViewAction());
  }
 
  void MainWindow::createVlc()

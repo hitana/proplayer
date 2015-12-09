@@ -1,12 +1,13 @@
 #include "yuvwidget.h"
 #include <QLayout>
 
-YuvWidget::YuvWidget(const QGLFormat &format, QWidget *parent)
-    : QGLWidget(format, parent)
+YuvWidget::YuvWidget(QWidget *parent)
+    : QWidget(parent)
 {
     imageLabel = new QLabel(this);
     imageLabel->setBackgroundRole(QPalette::Base);
-    imageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);  // todo
+    //imageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);  // todo
+    imageLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     imageLabel->setScaledContents(true);
     imageLabel->setText("YUV output");
     imageLabel->setStyleSheet("QLabel { background-color : transparent; color : grey; font: italic;}");

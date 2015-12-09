@@ -161,6 +161,7 @@ typedef struct _VideoInfo
      BunchOfGstElements bunch;
      VideoWidget   * videoWidget;
      YuvWidget     * yuvWidget;
+     QDockWidget   * yuvDock;
 
      AudioPipeline audioBranches[MAX_AUDIO_TRACKS];
 
@@ -186,7 +187,7 @@ typedef struct _VideoInfo
      void createStatusBar();
      void createDockWindows();
      void createCentralWidget();
-     void createYuvWidget();
+     void createYuvDock();
      void createDiscoverer();
      void createVlc();
 
