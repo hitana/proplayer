@@ -116,6 +116,36 @@
 
  } AudioPipeline;
 
+typedef struct _VideoInfo
+{
+    bool isValid;
+
+    int frameWidth;
+    int frameHeight;
+    int frameStride;
+    int frameSize;
+    GstVideoInterlaceMode interlace;
+    GstVideoFormat        videoFormat;
+    GstVideoFlags         flags;
+    GstVideoFormatFlags   formatFlags;
+    GstVideoFormat        unpackFormat;
+
+    int frameOffset;
+    int views;
+    int pixelStride;
+    int numComponents;
+    int shift;
+    int bitDepth;
+    int plane;
+    int pOffset;
+    int wSub;
+    int hSub;
+    int packLines;
+
+    // todo : add all useful fields
+
+} VideoInfo;
+
  class MainWindow : public QMainWindow
  {
      Q_OBJECT
@@ -130,6 +160,7 @@
      QListWidget   * messageList;
      BunchOfGstElements bunch;
      VideoWidget   * videoWidget;
+     YuvWidget     * yuvWidget;
 
      AudioPipeline audioBranches[MAX_AUDIO_TRACKS];
 
@@ -140,6 +171,8 @@
      // todo : make more elegant
      QDockWidget * audioDocks[MAX_AUDIO_TRACKS];
      int numberOfAudioDocks;
+
+     VideoInfo videoInfo;
 
  private slots:
      void about();
@@ -165,6 +198,7 @@
      void pausePlaying();
      void setVideoOverlays();
      void setAudioOverlays();
+     void setFakesinkCallbacks();
 
      void insertMediaInfo (const char * uri);
 
@@ -172,7 +206,6 @@
      QTextEdit     * codecInfo;
      GstDiscoverer * discoverer;
      GraphViewer   * graphViewer;
-     YuvWidget     * yuvWidget;
 
      QMenu *fileMenu;
      QMenu *editMenu;

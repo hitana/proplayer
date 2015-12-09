@@ -54,6 +54,7 @@ static void on_autoplug_continue (GstElement *decodebin, GstPad *pad, GstCaps * 
 static void on_no_more_pads (GstElement * element, gpointer data);
 static void on_pad_removed (GstElement * element, GstPad * oldpad, gpointer data);
 static void on_have_type (GstElement *typefind, guint probability, GstCaps *caps, gpointer data);
+static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * pad, MainWindow * mainWindow);
 
 #ifdef Q_OS_WIN
 #include <windows.h> // for Sleep
@@ -123,6 +124,8 @@ GstElement * MainWindow::findVideosink()
      :pipeline(NULL)
  {
      gst_init (NULL, NULL);
+
+     videoInfo.isValid = FALSE;
 
      bunch.audioTracks = 0;
      numberOfAudioDocks = 0;
@@ -757,7 +760,6 @@ int MainWindow::createPipelineByString ()
     // for /home/vq/Видео/atomic.ts
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
     //" ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?      // was here, okay
-
     " ! decodebin name=dec ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink "); // test fakesink
 
     // todo : use more stable version of gst-discoverer
@@ -791,6 +793,8 @@ int MainWindow::createPipelineByString ()
     }
     videoWidget->setPipelinePtr(pipeline);
 
+    setFakesinkCallbacks(); // test, fails!
+
     setVideoOverlays();
     setAudioOverlays();
 
@@ -799,6 +803,230 @@ int MainWindow::createPipelineByString ()
     dumpAndShowPipeline();
 
     return 0;
+}
+
+void MainWindow::setFakesinkCallbacks()
+{
+    GstElement * vfakesink = gst_bin_get_by_name (GST_BIN (pipeline), "vfakesink");
+    if (vfakesink != NULL)
+    {
+        g_object_set (G_OBJECT (vfakesink), "sync", TRUE, "signal-handoffs", TRUE, NULL);
+        g_signal_connect (vfakesink, "preroll-handoff", G_CALLBACK(on_fakesink_buffer), this);
+        g_signal_connect (vfakesink, "handoff", G_CALLBACK(on_fakesink_buffer), this);
+        gst_object_unref (vfakesink);
+    }
+    else {
+        qDebug() << "setFakesinkCallbacks: ERROR! vfakesink not found!";
+    }
+}
+
+static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * pad, MainWindow * mainWindow)
+{
+    Q_UNUSED(element)
+
+    if (mainWindow->videoInfo.isValid == FALSE)
+    {
+        GstVideoInfo vinfo;
+        GstCaps *caps = gst_pad_get_current_caps (GST_PAD (pad));
+        if (!caps) {
+            qDebug() <<  "on_fakesink_buffer: WARNING! Could not get caps for pad!";
+            return;
+        }
+
+        if (!gst_video_info_from_caps (&vinfo, caps)){
+            qDebug() << "on_falesink_buffer: WARNING! gst_video_info_from_caps failed!";
+            return;
+        }
+
+        gst_video_info_init (&vinfo);
+        gst_video_info_from_caps (&vinfo, caps);
+
+        GstVideoFrame f;
+        gst_video_frame_map(&f, &vinfo, buf, GST_MAP_READ);
+        mainWindow->videoInfo.frameWidth = f.info.width;
+        mainWindow->videoInfo.frameHeight = f.info.height;
+        mainWindow->videoInfo.interlace = f.info.interlace_mode;
+        mainWindow->videoInfo.frameSize = f.info.size;
+        mainWindow->videoInfo.frameStride = f.info.stride[0];
+        mainWindow->videoInfo.frameOffset = f.info.offset[0];
+        mainWindow->videoInfo.flags = f.info.flags;
+        mainWindow->videoInfo.views = f.info.views;
+        mainWindow->videoInfo.pixelStride = f.info.finfo->pixel_stride[0];
+        mainWindow->videoInfo.formatFlags = f.info.finfo->flags;
+        mainWindow->videoInfo.videoFormat = f.info.finfo->format;
+        mainWindow->videoInfo.numComponents = f.info.finfo->n_components;
+        mainWindow->videoInfo.shift = f.info.finfo->shift[0];
+        mainWindow->videoInfo.bitDepth = f.info.finfo->depth[0];
+        mainWindow->videoInfo.plane = f.info.finfo->plane[0];
+        mainWindow->videoInfo.plane = f.info.finfo->poffset[0];
+        mainWindow->videoInfo.wSub = f.info.finfo->w_sub[0];
+        mainWindow->videoInfo.hSub = f.info.finfo->h_sub[0];
+        mainWindow->videoInfo.packLines = f.info.finfo->pack_lines;
+        mainWindow->videoInfo.unpackFormat = f.info.finfo->unpack_format;
+
+        qDebug() << "INFO ----------------------------------------------------";
+        qDebug() << "width=" << f.info.width  << " height=" << f.info.height;
+        qDebug() << "interlace=" << f.info.interlace_mode << " size="<< f.info.size;
+        qDebug() << "stride=" << f.info.stride[0] << " offset="<< f.info.offset[0];
+        qDebug() << "flags=" << f.info.flags << " views="<< f.info.views;
+        qDebug() << "pixel stride =" << f.info.finfo->pixel_stride[0]  << " format flags = " << f.info.finfo->flags;
+        qDebug() << "video format=" << f.info.finfo->format << " n_components=" << f.info.finfo->n_components;
+        qDebug() << "shift=" << f.info.finfo->shift[0] << " depth" << f.info.finfo->depth[0] << " plane=" << f.info.finfo->plane[0] << " poffset=" << f.info.finfo->poffset[0];
+        qDebug() << "w_sub=" << f.info.finfo->w_sub[0] << " h_sub=" << f.info.finfo->h_sub[0] << " pack_lines=" <<  f.info.finfo->pack_lines <<  " unpack format=" << f.info.finfo->unpack_format;
+
+        switch (mainWindow->videoInfo.videoFormat)
+        {
+        case GST_VIDEO_FORMAT_YV12:
+            //format = CLUTTER_GST_YV12;
+            qDebug() << "GST_VIDEO_FORMAT_YV12";
+            break;
+        case GST_VIDEO_FORMAT_I420:
+            //format = CLUTTER_GST_I420;
+            qDebug() << "GST_VIDEO_FORMAT_I420";
+            break;
+        case GST_VIDEO_FORMAT_AYUV:
+            //format = CLUTTER_GST_AYUV;
+            qDebug() << "GST_VIDEO_FORMAT_AYUV";
+            //bgr = FALSE;
+            break;
+        case GST_VIDEO_FORMAT_RGB:
+            //format = CLUTTER_GST_RGB24;
+            qDebug() << "GST_VIDEO_FORMAT_RGB";
+            //bgr = FALSE;
+            break;
+        case GST_VIDEO_FORMAT_BGR:
+            //format = CLUTTER_GST_RGB24;
+            qDebug() << "GST_VIDEO_FORMAT_BGR";
+            //bgr = TRUE;
+            break;
+        case GST_VIDEO_FORMAT_RGBA:
+            //format = CLUTTER_GST_RGB32;
+            qDebug() << "GST_VIDEO_FORMAT_RGBA";
+            //bgr = FALSE;
+            break;
+        case GST_VIDEO_FORMAT_BGRA:
+            //format = CLUTTER_GST_RGB32;
+            qDebug() << "GST_VIDEO_FORMAT_BGRA";
+            //bgr = TRUE;
+            break;
+        default:
+            break;
+        }
+        mainWindow->videoInfo.isValid = TRUE;
+    } // first call
+
+        /*
+         * GstMapInfo gstMapInfo;
+    //GstBuffer * gstBuf;
+    qDebug() << "gst_buffer_map...";
+    if (!gst_buffer_map ((GstBuffer*)buf, &gstMapInfo, (GstMapFlags)( GST_MAP_READ | GST_MAP_WRITE ))) {
+        gst_buffer_unmap ((GstBuffer*)buf, &gstMapInfo);
+        gst_buffer_unref ((GstBuffer*)buf);
+        return NULL;
+    }
+    gst_buffer_unmap ((GstBuffer*)buf, &gstMapInfo);
+    gst_buffer_unref ((GstBuffer*)buf);
+    return (unsigned char *) gstMapInfo.data; // ?? will it be valid after unmap?
+*/
+
+    GstMapInfo info;
+    //GstBuffer * buf = (GstBuffer*)this->m_vidTextures[vidIx].buffer;
+
+    QImage yuvImage;
+    gst_buffer_map (buf, &info, (GstMapFlags)(GST_MAP_READ));
+
+    switch(mainWindow->videoInfo.videoFormat)
+    {
+    case GST_VIDEO_FORMAT_I420:
+        yuvImage = QImage(info.data,
+                          mainWindow->videoInfo.frameWidth,
+                          mainWindow->videoInfo.frameHeight*1.5f,
+                          QImage::Format_Indexed8);
+        break;
+    case GST_VIDEO_FORMAT_UYVY:
+        yuvImage = QImage(info.data,
+                   mainWindow->videoInfo.frameWidth*2,
+                   mainWindow->videoInfo.frameHeight,
+                   QImage::Format_Indexed8);
+        break;
+    // todo:
+    case GST_VIDEO_FORMAT_YV12:
+    case GST_VIDEO_FORMAT_YUY2:
+    case GST_VIDEO_FORMAT_AYUV:
+    case GST_VIDEO_FORMAT_RGBx:
+    case GST_VIDEO_FORMAT_BGRx:
+    case GST_VIDEO_FORMAT_xRGB:
+    case GST_VIDEO_FORMAT_xBGR:
+    case GST_VIDEO_FORMAT_RGBA:
+    case GST_VIDEO_FORMAT_BGRA:
+    case GST_VIDEO_FORMAT_ARGB:
+    case GST_VIDEO_FORMAT_ABGR:
+    case GST_VIDEO_FORMAT_RGB:
+    case GST_VIDEO_FORMAT_BGR:
+    case GST_VIDEO_FORMAT_Y41B:
+    case GST_VIDEO_FORMAT_Y42B:
+    case GST_VIDEO_FORMAT_YVYU:
+    case GST_VIDEO_FORMAT_Y444:
+    case GST_VIDEO_FORMAT_v210:
+    case GST_VIDEO_FORMAT_v216:
+    case GST_VIDEO_FORMAT_NV12:
+    case GST_VIDEO_FORMAT_NV21:
+    case GST_VIDEO_FORMAT_GRAY8:
+    case GST_VIDEO_FORMAT_GRAY16_BE:
+    case GST_VIDEO_FORMAT_GRAY16_LE:
+    case GST_VIDEO_FORMAT_v308:
+    case GST_VIDEO_FORMAT_RGB16:
+    case GST_VIDEO_FORMAT_BGR16:
+    case GST_VIDEO_FORMAT_RGB15:
+    case GST_VIDEO_FORMAT_BGR15:
+    case GST_VIDEO_FORMAT_UYVP:
+    case GST_VIDEO_FORMAT_A420:
+    case GST_VIDEO_FORMAT_RGB8P:
+    case GST_VIDEO_FORMAT_YUV9:
+    case GST_VIDEO_FORMAT_YVU9:
+    case GST_VIDEO_FORMAT_IYU1:
+    case GST_VIDEO_FORMAT_ARGB64:
+    case GST_VIDEO_FORMAT_AYUV64:
+    case GST_VIDEO_FORMAT_r210:
+    case GST_VIDEO_FORMAT_I420_10BE:
+    case GST_VIDEO_FORMAT_I420_10LE:
+    case GST_VIDEO_FORMAT_I422_10BE:
+    case GST_VIDEO_FORMAT_I422_10LE:
+    case GST_VIDEO_FORMAT_Y444_10BE:
+    case GST_VIDEO_FORMAT_Y444_10LE:
+    case GST_VIDEO_FORMAT_GBR:
+    case GST_VIDEO_FORMAT_GBR_10BE:
+    case GST_VIDEO_FORMAT_GBR_10LE:
+    case GST_VIDEO_FORMAT_NV16:
+    case GST_VIDEO_FORMAT_NV24:
+    case GST_VIDEO_FORMAT_ENCODED:
+    case GST_VIDEO_FORMAT_UNKNOWN:
+        break;
+    default: break;
+    }
+    gst_buffer_unmap(buf, &info);
+    // todo: unref ?
+
+    QPixmap overlayYuv = QPixmap::fromImage(yuvImage);
+/*
+    QPainter painter(&overlayYuv);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::TextAntialiasing);
+
+    painter.endNativePainting();*/
+    /*QString framesPerSecond;
+    framesPerSecond.setNum(m_frames /(m_frameTime.elapsed() / 1000.0), 'f', 2);
+    painter.setPen(Qt::white);
+
+    //static int xpos = 20;
+    //static int ypos = 40;
+    //painter.drawText(xpos++, ypos++, framesPerSecond + " fps");
+    // end test
+    painter.drawText(20, 40, framesPerSecond + " fps");
+*/
+    //painter.end();
+
+    mainWindow->yuvWidget->imageLabel->setPixmap(overlayYuv);
 }
 
 void MainWindow::setVideoOverlays()

@@ -1,6 +1,7 @@
 #include <QMainWindow>
 #include "videowidget.h"
 #include <QPicture>
+#include <QLayout>
 
 #ifdef GLU_NEEDED
 //vika : in Linux use "GL/glu.h"

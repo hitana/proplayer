@@ -25,9 +25,10 @@
 #include "gstpipeline.h"
 #include <gst/gst.h>
 #include <gst/video/videooverlay.h>
+#include <gst/video/video.h>
 
 #ifdef ENABLE_YUV_WINDOW
-#include "yuvdebugwindow.h"
+#undef ENABLE_YUV_WINDOW
 #endif
 
 #ifdef IMGTEX_EXT_NEEDED
