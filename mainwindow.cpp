@@ -913,25 +913,9 @@ static void on_fakesink_buffer(GstElement * element, GstBuffer * buf, GstPad * p
             break;
         }
         mainWindow->videoInfo.isValid = TRUE;
-    } // first call
-
-        /*
-         * GstMapInfo gstMapInfo;
-    //GstBuffer * gstBuf;
-    qDebug() << "gst_buffer_map...";
-    if (!gst_buffer_map ((GstBuffer*)buf, &gstMapInfo, (GstMapFlags)( GST_MAP_READ | GST_MAP_WRITE ))) {
-        gst_buffer_unmap ((GstBuffer*)buf, &gstMapInfo);
-        gst_buffer_unref ((GstBuffer*)buf);
-        return NULL;
     }
-    gst_buffer_unmap ((GstBuffer*)buf, &gstMapInfo);
-    gst_buffer_unref ((GstBuffer*)buf);
-    return (unsigned char *) gstMapInfo.data; // ?? will it be valid after unmap?
-*/
 
     GstMapInfo info;
-    //GstBuffer * buf = (GstBuffer*)this->m_vidTextures[vidIx].buffer;
-
     QImage yuvImage;
     gst_buffer_map (buf, &info, (GstMapFlags)(GST_MAP_READ));
 

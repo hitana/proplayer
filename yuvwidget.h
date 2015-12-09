@@ -11,6 +11,9 @@ public:
     explicit YuvWidget(const QGLFormat &format, QWidget *parent = 0);
     QLabel *imageLabel;
 
+    QSize minimumSizeHint() const;
+    QSize sizeHint() const;
+
 signals:
 
 public slots:

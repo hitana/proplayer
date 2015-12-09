@@ -16,3 +16,13 @@ YuvWidget::YuvWidget(const QGLFormat &format, QWidget *parent)
     layout->addWidget(imageLabel);
     setLayout(layout);
 }
+
+QSize YuvWidget::minimumSizeHint() const
+{
+    return QSize(50, 50);
+}
+
+QSize YuvWidget::sizeHint() const
+{
+    return QSize(400, 400);
+}
