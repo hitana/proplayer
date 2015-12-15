@@ -10,6 +10,7 @@ YuvWidget::YuvWidget(QWidget *parent)
     //imageLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     //imageLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     imageLabel->setScaledContents(true);
+    imageLabel->setAlignment(Qt::AlignCenter);
     imageLabel->setText("YUV output");
     imageLabel->setStyleSheet("QLabel { background-color : transparent; color : grey; font: italic;}");
 

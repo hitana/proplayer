@@ -56,7 +56,7 @@
 
 #include <gst/pbutils/pbutils.h>
 
-#define MAX_AUDIO_TRACKS 64
+#define MAX_AUDIO_TRACKS 8
 
 // todo : set some dir for Windows
 #define PIPELINE_DIR       "/tmp"
@@ -164,6 +164,8 @@ typedef struct _VideoInfo
      VideoWidget   * videoWidget;
      YuvWidget     * yuvWidget;
      QDockWidget   * yuvDock;
+     int             discoverLevel;
+     int             discoverAudioLevel;
 
      AudioPipeline audioBranches[MAX_AUDIO_TRACKS];
 

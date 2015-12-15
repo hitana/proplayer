@@ -225,81 +225,45 @@ void MainWindow::addSourcesToPlaylist(QStringList names)
      addSourcesToPlaylist(e->mimeData()->urls());
  }
 
- void MainWindow::insertMediaInfo (const char * filepath)
- {
-     QTextDocument *document = codecInfo->document();
-     QTextCursor cursor(document);
+void MainWindow::insertMediaInfo (const char * filepath)
+{
+    gchar uri[PATH_MAX];
+    QTextDocument *document = codecInfo->document();
+    QTextCursor cursor(document);
 
-     document->clear(); // ??
+    document->clear();
+    bunch.audioTracks = 0;
 
-     cursor.beginEditBlock();
-     //cursor.insertText("Hello");
-     cursor.endEditBlock();
+    if (strstr(filepath, "://") == NULL){
+        snprintf (uri, PATH_MAX, "file://%s", filepath);
+    }
+    else {
+        snprintf (uri, PATH_MAX, "%s", filepath);
+    }
 
-   /*
-     cursor.beginEditBlock();
-     //cursor.insertText();
-     cursor.insertBlock();
-     cursor.insertText(infoList.at(i));
-     cursor.endEditBlock();
- */
-     bunch.audioTracks = 0; // test, clear before discover
+    cursor.insertText(uri);
+    addColoredLog("I: Discovering " + QString::fromLocal8Bit(uri) + " ...", MT_INFO);
 
-     //const gchar *uri = "http://docs.gstreamer.com/media/sintel_trailer-480p.webm";   // for test
-     gchar uri[PATH_MAX];
-     snprintf (uri, PATH_MAX, "file://%s", filepath);
-     qDebug () << "insertMediaInfo: " << uri;
+    /* Start the discoverer process (nothing to do yet) */
+    gst_discoverer_start (discoverer);
+    discoverLevel = 0;
+    discoverAudioLevel = 0;
 
-       //cursor.insertBlock();
-       //cursor.beginEditBlock();
-       cursor.insertText(uri);
-       //cursor.endEditBlock();
+    /* Add a request to process asynchronously the URI passed through the command line */
+    if (!gst_discoverer_discover_uri_async (discoverer, uri)) {
+        addColoredLog("E: Failed to start discovering URI " + QString::fromLocal8Bit(uri), MT_ERROR);
+        g_object_unref (discoverer);
+        return;
+    }
 
-       addColoredLog("I: Discovering " + QString::fromLocal8Bit(uri) + " ...", MT_INFO);
+    /* Set GLib Main Loop to run, so we can wait for the signals */
+    g_main_loop_run (loop);
+    gst_discoverer_stop (discoverer);
 
-       /* Start the discoverer process (nothing to do yet) */
-       gst_discoverer_start (discoverer);
-
-       /* Add a request to process asynchronously the URI passed through the command line */
-       if (!gst_discoverer_discover_uri_async (discoverer, uri)) {
-           addColoredLog("E: Failed to start discovering URI " + QString::fromLocal8Bit(uri), MT_ERROR);
-           g_object_unref (discoverer);
-           return;
-       }
-
-       /* Set GLib Main Loop to run, so we can wait for the signals */
-       g_main_loop_run (loop);
-
-       gst_discoverer_stop (discoverer);
-
-       /* Free resources */
-       //g_object_unref (discoverer);
-       //g_main_loop_unref (loop);
-
-       // end discover media data
-       // ///////////////////////////////////////////////////////////////////////////
-
-     // todo : make a QString with all mediadata
-/*
-     QStringList infoList = info.split(", ");
-     QTextDocument *document = textEdit->document();
-     QTextCursor cursor = document->find("NAME");
-     if (!cursor.isNull()) {
-         cursor.beginEditBlock();
-         cursor.insertText(infoList.at(0));
-         QTextCursor oldcursor = cursor;
-         cursor = document->find("ADDRESS");
-         if (!cursor.isNull()) {
-             for (int i = 1; i < infoList.size(); ++i) {
-                 cursor.insertBlock();
-                 cursor.insertText(infoList.at(i));
-             }
-             cursor.endEditBlock();
-         }
-         else
-             oldcursor.endEditBlock();
-     }*/
- }
+    /* Free resources */
+    //g_object_unref (discoverer);
+    //g_main_loop_unref (loop);
+}
 
 void MainWindow::onSelectPlaylist(const QString &playlistItem)
 {
@@ -698,6 +662,9 @@ int MainWindow::convertDotToPng(char * dotPath, char * pngPath)
 
 int MainWindow::createPipelineByString ()
 {
+    char pipelineChars[PATH_MAX];
+    QString playlistItem (playList->currentItem()->text());
+
     if (pipeline != NULL) {
         gst_element_set_state (pipeline, GST_STATE_NULL);
     }
@@ -711,9 +678,6 @@ int MainWindow::createPipelineByString ()
     // for eg., /Users/qa/Desktop/media/atomic.ts
     " ! tsdemux name=demux ! queue ! avdec_mpeg2video ! glimagesink name=vsink ");
 
-    // todo : use more stable version of gst-discoverer
-    // and use it for demux selection and pipeline creation
-
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
         //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! glimagesink name=asink_%d ", i, i);
@@ -721,70 +685,18 @@ int MainWindow::createPipelineByString ()
         pipelineString.append(audioBranch);
     }
  #elif defined(Q_OS_UNIX)
-
-    /*
-    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-      // ok
-       //" ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
-
-    // test, works but shows garbage on top left corner
-     //" ! decodebin name=dec ! queue ! xvimagesink name=vsink dec. ! tee name=t ! queue !  audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink t. ! queue ! autoaudiosink");
+    //QString pipelineString("filesrc location=" + playList->currentItem()->text() +
+    //" ! decodebin name=dec ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink ");   // working
 
 
-      // works but video flashes
-      //" ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
-
-     // test, works but shows garbage on top left corner
-       // " ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink demux. ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! videoconvert ! ximagesink name=asink");
-
-
-  " ! decodebin name=dec ! xvimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink"); // was ok for one audio
-
-
-   //" ! decodebin name=dec ! xvimagesink name=vsink "); // for appending several audio
-
-
-   */
-
-    /*
-     gst-launch-1.0 filesrc location=/home/vq/Видео/billiards.mkv !
-        matroskademux name=demux \
-        demux.video_0 ! queue ! h264parse ! eavcdec ! autovideosink \
-        demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink \
-        demux.audio_1 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink \
-        demux.audio_2 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink \
-        demux.audio_3 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink
-*/
-/*
-    // for /home/vq/Видео/Paradise.mp4
-    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
- "! qtdemux name=demux demux.video_0 ! queue ! h264parse ! eavcdec ! xvimagesink name=vsink ");
-    // demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink"
-*/
-/*
-    // for /home/vq/Видео/atomic.ts
-    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
- " ! tsdemux name=demux demux.video_0 ! queue ! mpeg2dec ! xvimagesink name=vsink ");
-    // demux.audio_0 ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink"
-*/
-/*
-    // works but video flushes
-    // for /home/vq/Видео/atomic.ts
-    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
- " ! tsdemux name=demux ! queue ! mpeg2dec ! xvimagesink name=vsink ");
-    // demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_0
-
-    */
-    // for /home/vq/Видео/atomic.ts
-    QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-
-    //" ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?      // was here, okay
-    " ! decodebin name=dec ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink ");
+    if (!playlistItem.contains("://")){
+        playlistItem.push_front("file://");
+    }
+    QString pipelineString("uridecodebin uri=" + playlistItem + " name=dec " +
+        " ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink ");
 
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
-        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);  // doesn't work with pad names
-        //snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // works but flushes
         snprintf (audioBranch, 256, "dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // todo : async=false ?
         pipelineString.append(audioBranch);
     }
@@ -793,7 +705,6 @@ int MainWindow::createPipelineByString ()
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
                            " ! decodebin name=dec ! queue ! glimagesink name=vsink dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink");
  #endif
-    char pipelineChars[PATH_MAX];
     sprintf (pipelineChars, "%s", pipelineString.toLocal8Bit().data());
     //sprintf (pipelineChars, "%s", pipelineString.toLatin1().data());
     //sprintf (pipelineChars, "%s", pipelineString.toStdString().c_str());
@@ -1244,6 +1155,8 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
     const GstTagList *tags;
     MainWindow * mainWindow = (MainWindow*)user_data;
 
+    qDebug() << "print_stream_info: level = " << mainWindow->discoverLevel;
+
     caps = gst_discoverer_stream_info_get_caps (info);
 
     if (caps) {
@@ -1264,9 +1177,23 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
         desc = NULL;
     }
 
-    if (strstr (gst_discoverer_stream_info_get_stream_type_nick (info), "audio")){
-        mainWindow->bunch.audioTracks ++;
-        qDebug() << "print_stream_info: Found audio track";
+    if (strstr (gst_discoverer_stream_info_get_stream_type_nick (info), "audio"))
+    {
+        if (mainWindow->discoverAudioLevel == 0 || mainWindow->discoverLevel == mainWindow->discoverAudioLevel)
+        {
+            mainWindow->discoverAudioLevel = mainWindow->discoverLevel;
+            if (mainWindow->bunch.audioTracks + 1 < MAX_AUDIO_TRACKS){
+                mainWindow->bunch.audioTracks ++;
+                qDebug() << "print_stream_info: Found audio track";
+            }
+            else {
+                qDebug() << "WARNING! print_stream_info: Number of audio tracks exceeded " << MAX_AUDIO_TRACKS;
+            }
+        }
+        else {
+            qDebug() << "print_stream_info: Found audio subtype, don't increment";
+        }
+        //mainWindow->bunch.audioTracks ++;
     }
 
     tags = gst_discoverer_stream_info_get_tags (info);
@@ -1281,10 +1208,12 @@ static void print_stream_info (GstDiscovererStreamInfo *info, gpointer user_data
 static void print_topology (GstDiscovererStreamInfo *info, gpointer user_data)
 {
   GstDiscovererStreamInfo *next;
+  MainWindow * mainWindow = (MainWindow*)user_data;
 
   if (!info)
     return;
 
+  mainWindow->discoverLevel ++;
   print_stream_info (info, user_data);
 
   next = gst_discoverer_stream_info_get_next (info);
@@ -1301,6 +1230,9 @@ static void print_topology (GstDiscovererStreamInfo *info, gpointer user_data)
     }
     gst_discoverer_stream_info_list_free (streams);
   }
+
+  mainWindow->discoverLevel --;
+
 }
 /* This function is called every time the discoverer has information regarding
  * one of the URIs we provided.*/
@@ -1404,7 +1336,8 @@ void MainWindow::openURI()
     QInputDialog * dlg = new QInputDialog(this);
     dlg->setInputMode (QInputDialog::TextInput);
     dlg->setLabelText("Media URI:");
-    dlg->setTextValue("http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8");   // test HLS
+    // http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8
+    dlg->setTextValue("http://docs.gstreamer.com/media/sintel_trailer-480p.webm");   // for test
     dlg->resize(800,100);
     ok = dlg->exec();
     QString text = dlg->textValue();
@@ -1423,7 +1356,7 @@ void MainWindow::openFiles()
                         this, tr("QFileDialog::getOpenFileNames()"),
                         openFilesPath,
                         tr("Video Files \
-                        (*.webm *.mkv *.flv *.flv *.vob *.ogv *.ogg *.avi *.mov *.qt *.wmv \
+                        (*.ts *.webm *.mkv *.flv *.flv *.vob *.ogv *.ogg *.avi *.mov *.qt *.wmv \
                         *.yuv *.rm *.rmvb *.asf *.mp4 *.m4p *.m4v *.mpg *.mp2 *.mpeg *.mpe \
                         *.mpv *.mpg *.mpeg *.m2v *.m4v *.svi *.3gp *.3g2 *.mxf *.nsv *.flv \
                         *.f4v *.f4p *.f4a *.f4b)"), // All Files (*);;
@@ -1583,7 +1516,7 @@ void MainWindow::addAudioDock(int trackNumber)
      addDockWidget(Qt::RightDockWidgetArea, dock);
      viewMenu->addAction(dock->toggleViewAction());
 
-     dock = new QDockWidget ("Graph", this);
+     dock = new QDockWidget ("", this);
      graphViewer = new GraphViewer(dock);
      dock->setWidget(graphViewer);
      addDockWidget(Qt::TopDockWidgetArea , dock, Qt::Horizontal);
@@ -1614,21 +1547,13 @@ void MainWindow::addAudioDock(int trackNumber)
      addDockWidget(Qt::BottomDockWidgetArea, dock, Qt::Horizontal);
      viewMenu->addAction(dock->toggleViewAction());
 
-     /*// todo : remove it - this is now done in createAudioPipelineBranch()
-     dock = new QDockWidget (tr("Audio track #0"), this);
-     audioForm = new QGLWidget(dock);
-     dock->setWidget(audioForm);
-     addDockWidget(Qt::RightDockWidgetArea, dock);
-     viewMenu->addAction(dock->toggleViewAction());
-*/
-
      connect (playList, SIGNAL(currentTextChanged(QString)), this, SLOT(onSelectPlaylist(QString)));
      connect (playList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(onDoubleClick(QModelIndex)));
  }
 
  void MainWindow::createYuvDock()
  {
-     yuvDock = new QDockWidget ("Raw output", this);
+     yuvDock = new QDockWidget ("", this);
      yuvWidget = new YuvWidget(this);
      yuvDock->setWidget(yuvWidget);
      addDockWidget(Qt::LeftDockWidgetArea, yuvDock);
