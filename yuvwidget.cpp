@@ -33,7 +33,9 @@ int YuvWidget::heightForWidth (int width) const
 void YuvWidget::resizeEvent(QResizeEvent * e)
 {
     Q_UNUSED(e);
-    imageLabel->setPixmap(pixmap.scaled(this->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    if (!pixmap.isNull()){
+        imageLabel->setPixmap(pixmap.scaled(this->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
 }
 
 QSize YuvWidget::minimumSizeHint() const
