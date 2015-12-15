@@ -9,8 +9,8 @@ CONFIG += console
     videowidget.h \
     graphviewer.h \
     yuvwidget.h \
-    audiowidget.h \
-    opendialog.h
+    audiowidget.h
+
  SOURCES         = main.cpp \
                    mainwindow.cpp \
     pipeline.cpp \
@@ -18,8 +18,8 @@ CONFIG += console
     videowidget.cpp \
     graphviewer.cpp \
     yuvwidget.cpp \
-    audiowidget.cpp \
-    opendialog.cpp
+    audiowidget.cpp
+
  RESOURCES       = dockwidgets.qrc
 
  unix {

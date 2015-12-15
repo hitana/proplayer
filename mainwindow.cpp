@@ -1398,7 +1398,24 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
     g_main_loop_quit (mainWindow->loop);
 }
 
-void MainWindow::openMedia()
+void MainWindow::openURI()
+{
+    bool ok;
+    QInputDialog * dlg = new QInputDialog(this);
+    dlg->setInputMode (QInputDialog::TextInput);
+    dlg->setLabelText("Media URI:");
+    dlg->setTextValue("http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8");   // test HLS
+    dlg->resize(800,100);
+    ok = dlg->exec();
+    QString text = dlg->textValue();
+
+    if (ok && !text.isEmpty())
+    {
+        addSourcesToPlaylist(QStringList(text));
+    }
+}
+
+void MainWindow::openFiles()
 {
     QString openFilesPath;
     QString selectedFilter;
@@ -1427,10 +1444,15 @@ void MainWindow::openMedia()
 
  void MainWindow::createActions()
  {
-     openAct = new QAction(tr("&Open files"), this);
-     openAct->setShortcuts(QKeySequence::Open);
-     openAct->setStatusTip(tr("Add files to playlist"));
-     connect(openAct, SIGNAL(triggered()), this, SLOT(openMedia()));
+     openFileAct = new QAction(tr("&Open files"), this);
+     openFileAct->setShortcuts(QKeySequence::Open);
+     openFileAct->setStatusTip(tr("Add files to playlist"));
+     connect(openFileAct, SIGNAL(triggered()), this, SLOT(openFiles()));
+
+     openURIAct = new QAction(tr("Open &URI"), this);
+     //openURIAct->setShortcuts(QKeySequence::Open);
+     openURIAct->setStatusTip(tr("Add URI to playlist"));
+     connect(openURIAct, SIGNAL(triggered()), this, SLOT(openURI()));
 
      quitAct = new QAction(tr("&Quit"), this);
      quitAct->setShortcuts(QKeySequence::Quit);
@@ -1449,7 +1471,8 @@ void MainWindow::openMedia()
  void MainWindow::createMenus()
  {
      fileMenu = menuBar()->addMenu(tr("&File"));
-     fileMenu->addAction(openAct);
+     fileMenu->addAction(openFileAct);
+     fileMenu->addAction(openURIAct);
      fileMenu->addAction(quitAct);
 
      viewMenu = menuBar()->addMenu(tr("&View"));

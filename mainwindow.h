@@ -53,7 +53,6 @@
 #include "graphviewer.h"
 #include "yuvwidget.h"
 #include "audiowidget.h"
-#include "opendialog.h"
 
 #include <gst/pbutils/pbutils.h>
 
@@ -180,7 +179,8 @@ typedef struct _VideoInfo
 
  private slots:
      void about();
-     void openMedia();
+     void openFiles();
+     void openURI();
      void onSelectPlaylist(const QString &playlistItem);
      void onDoubleClick(const QModelIndex &modelIndex);
 
@@ -223,7 +223,8 @@ typedef struct _VideoInfo
      QAction *aboutAct;
      QAction *aboutQtAct;
      QAction *quitAct;
-     QAction *openAct;
+     QAction *openFileAct;
+     QAction *openURIAct;
 
      //libvlc_instance_t *vlcInstance;
      //libvlc_media_player_t *vlcPlayer;
