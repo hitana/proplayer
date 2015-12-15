@@ -140,6 +140,13 @@ GstElement * MainWindow::findVideosink()
      createDiscoverer();
      //createVlc();
 
+     setCodecAutoplugPriority("eavcdec",  GST_RANK_PRIMARY + 1);
+     setCodecAutoplugPriority("emp4dmx",  GST_RANK_PRIMARY + 1);
+     setCodecAutoplugPriority("emp4mux",  GST_RANK_PRIMARY + 1);
+     setCodecAutoplugPriority("empgdmx",  GST_RANK_PRIMARY + 1);
+     setCodecAutoplugPriority("empgpdmx", GST_RANK_PRIMARY + 1);
+     setCodecAutoplugPriority("enwsink",  GST_RANK_PRIMARY + 1);
+
      setWindowTitle(tr("ProPlayer Skeleton App"));
 
      setUnifiedTitleAndToolBarOnMac(true);
@@ -147,6 +154,22 @@ GstElement * MainWindow::findVideosink()
      setAcceptDrops(true);
 
      //QMainWindow::showFullScreen();   // shows incorrect
+ }
+
+ void MainWindow::setCodecAutoplugPriority(const char * codecName, int rank)
+ {
+    GstPluginFeature * feature;
+    GstRegistry * registry;
+
+    registry = gst_registry_get();
+    feature = gst_registry_lookup_feature (registry, codecName);
+    if (feature != NULL) {
+        gst_plugin_feature_set_rank (feature, rank);
+        gst_object_unref (feature);
+    }
+    else {
+        qDebug() << "setCodecAutoplugPriority: WARNING! Couldn't lookup " << codecName;
+    }
  }
 
  void MainWindow::addColoredLog(const QString &line, MessageType type)
@@ -175,6 +198,21 @@ GstElement * MainWindow::findVideosink()
      messageList->scrollToBottom();
  }
 
+void MainWindow::addSourcesToPlaylist(QList<QUrl> urls)
+{
+    foreach (const QUrl & url, urls) {
+        const QString &fileName = url.toLocalFile();
+        playList->addItem(fileName);
+    }
+}
+
+void MainWindow::addSourcesToPlaylist(QStringList names)
+{
+    foreach (const QString &fileName, names) {
+        playList->addItem(fileName);
+    }
+}
+
  void MainWindow::dragEnterEvent(QDragEnterEvent * e)
  {
      if (e->mimeData()->hasUrls()) {
@@ -184,12 +222,7 @@ GstElement * MainWindow::findVideosink()
 
  void MainWindow::dropEvent(QDropEvent * e)
  {
-     foreach (const QUrl & url, e->mimeData()->urls()) {
-         const QString & fileName = url.toLocalFile();
-
-         playList->addItem(fileName);
-
-     }
+     addSourcesToPlaylist(e->mimeData()->urls());
  }
 
  void MainWindow::insertMediaInfo (const char * filepath)
@@ -200,7 +233,7 @@ GstElement * MainWindow::findVideosink()
      document->clear(); // ??
 
      cursor.beginEditBlock();
-     cursor.insertText("Hello");
+     //cursor.insertText("Hello");
      cursor.endEditBlock();
 
    /*
@@ -482,16 +515,6 @@ static void on_new_demux_pad(GstElement *element, GstPad *pad, gpointer data)
     gst_object_unref (sinkpad);
 }
 */
-static void on_no_more_pads (GstElement * element, gpointer data)
-{
-    qDebug() <<  "on_new_decodebin_pad: IN\n";
-}
-
-static void on_autoplug_continue (GstElement *decodebin, GstPad *pad, GstCaps * gstcaps, gpointer data)
-{
-    qDebug() <<  "on_autoplug_continue: IN\n";
-}
-
 static void on_pad_removed (GstElement * element, GstPad * oldpad, gpointer data)
 {
     qDebug() <<  "on_pad_removed: IN\n";
@@ -511,11 +534,6 @@ static void on_pad_removed (GstElement * element, GstPad * oldpad, gpointer data
     str = gst_caps_get_structure (caps, 0);
 
     qDebug() << "on_pad_removed: Pad desc: " << gst_structure_get_name (str);*/
-}
-
-static void on_have_type (GstElement *typefind, guint probability, GstCaps *caps, gpointer data)
-{
-    qDebug() <<  "on_have_type: IN\n";
 }
 
 static void on_new_decodebin_pad (GstElement *decodebin, GstPad *pad, gpointer data)
@@ -759,15 +777,13 @@ int MainWindow::createPipelineByString ()
     */
     // for /home/vq/Видео/atomic.ts
     QString pipelineString("filesrc location=" + playList->currentItem()->text() +
-    //" ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?      // was here, okay
-    " ! decodebin name=dec ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink "); // test fakesink
 
-    // todo : use more stable version of gst-discoverer
-    // and use it for demux selection and pipeline creation
+    //" ! decodebin name=dec ! queue ! xvimagesink name=vsink ");  // todo : async=false ?      // was here, okay
+    " ! decodebin name=dec ! queue ! tee name=vtee ! queue ! xvimagesink name=vsink vtee. ! queue ! fakesink name=vfakesink ");
 
     for (int i=0; i<bunch.audioTracks; i++){
         char audioBranch[256];
-        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);  // doesn't works with pad names
+        //snprintf (audioBranch, 256, "demux.audio_%d ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i, i);  // doesn't work with pad names
         //snprintf (audioBranch, 256, "demux. ! queue ! decodebin ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // works but flushes
         snprintf (audioBranch, 256, "dec. ! audioconvert ! wavescope shader=0 style=3 ! ximagesink name=asink_%d ", i);  // todo : async=false ?
         pipelineString.append(audioBranch);
@@ -1382,6 +1398,24 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
     g_main_loop_quit (mainWindow->loop);
 }
 
+void MainWindow::openMedia()
+{
+    QString openFilesPath;
+    QString selectedFilter;
+    QStringList files = QFileDialog::getOpenFileNames(
+                        this, tr("QFileDialog::getOpenFileNames()"),
+                        openFilesPath,
+                        tr("Video Files \
+                        (*.webm *.mkv *.flv *.flv *.vob *.ogv *.ogg *.avi *.mov *.qt *.wmv \
+                        *.yuv *.rm *.rmvb *.asf *.mp4 *.m4p *.m4v *.mpg *.mp2 *.mpeg *.mpe \
+                        *.mpv *.mpg *.mpeg *.m2v *.m4v *.svi *.3gp *.3g2 *.mxf *.nsv *.flv \
+                        *.f4v *.f4p *.f4a *.f4b)"), // All Files (*);;
+                        &selectedFilter,
+                        NULL);  // options
+
+    addSourcesToPlaylist(files);
+}
+
  void MainWindow::about()
  {
     QMessageBox::about(this, tr("About Dock Widgets"),
@@ -1393,6 +1427,11 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
 
  void MainWindow::createActions()
  {
+     openAct = new QAction(tr("&Open files"), this);
+     openAct->setShortcuts(QKeySequence::Open);
+     openAct->setStatusTip(tr("Add files to playlist"));
+     connect(openAct, SIGNAL(triggered()), this, SLOT(openMedia()));
+
      quitAct = new QAction(tr("&Quit"), this);
      quitAct->setShortcuts(QKeySequence::Quit);
      quitAct->setStatusTip(tr("Quit the application"));
@@ -1410,6 +1449,7 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
  void MainWindow::createMenus()
  {
      fileMenu = menuBar()->addMenu(tr("&File"));
+     fileMenu->addAction(openAct);
      fileMenu->addAction(quitAct);
 
      viewMenu = menuBar()->addMenu(tr("&View"));
@@ -1425,7 +1465,7 @@ static void on_finished_cb (GstDiscoverer *discoverer, MainWindow * mainWindow)
  {
      // todo : fill toolbars with useful actions
      fileToolBar = addToolBar(tr("File"));
-     //fileToolBar->addAction(saveAct);
+     //fileToolBar->addAction(openAct);
      //fileToolBar->addAction(printAct);
 
      editToolBar = addToolBar(tr("Edit"));
